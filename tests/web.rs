@@ -6,9 +6,26 @@ extern crate libenchcrack;
 extern crate wasm_bindgen_test;
 use wasm_bindgen_test::*;
 use libenchcrack::Cracker;
-use libenchcrack::utils::{Rand, Timer};
+use libenchcrack::utils::Rand;
 use std::num::Wrapping;
 use std::panic;
+
+pub struct Timer<'a> {
+    name: &'a str,
+}
+
+impl<'a> Timer<'a> {
+    pub fn new(name: &'a str) -> Timer<'a> {
+        console::time_with_label(name);
+        Timer { name }
+    }
+}
+
+impl<'a> Drop for Timer<'a> {
+    fn drop(&mut self) {
+        console::time_end_with_label(self.name);
+    }
+}
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -67,7 +84,53 @@ fn cracking() {
 
     {
         let _timer = Timer::new("first input");
-        cracker.first_input(4, 2, 7, 8, 15, 6, 9, 30);
+        cracker.first_input(15, 5, 20, 30);
     }
-    assert!(cracker.contains(1949457528));
+    let first_amount = cracker.possible_seeds();
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("second input");
+        cracker.add_input(12, 5, 10, 24);
+    }
+    assert_ne!(cracker.possible_seeds(), first_amount);
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("third input");
+        cracker.add_input(8, 2, 10, 16);
+    }
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("fourth input");
+        cracker.add_input(6, 3, 9, 12);
+    }
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("fifth input");
+        cracker.add_input(4, 1, 9, 8);
+    }
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("sixth input");
+        cracker.add_input(3, 1, 9, 6);
+    }
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("seventh input");
+        cracker.add_input(7, 2, 13, 14);
+    }
+    assert!(cracker.contains(-329083225));
+
+    {
+        let _timer = Timer::new("eigth input");
+        cracker.add_input(14, 6, 12, 28);
+    }
+    assert!(cracker.contains(-329083225));
+
+    assert_eq!(cracker.possible_seeds(), 1)
 }

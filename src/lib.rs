@@ -1,12 +1,10 @@
-#![no_std]
-
 extern crate alloc;
 pub mod utils;
 
 use crate::utils::Rand;
 use wasm_bindgen::prelude::*;
-use core::ops::Range;
-use alloc::vec::Vec;
+use std::ops::Range;
+use alloc::string::String;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -51,6 +49,11 @@ impl Cracker {
     }
 
     #[wasm_bindgen]
+    pub fn seed(&mut self) -> String {
+        format!("{:08X}", self.possible_seeds[0])
+    }
+
+    #[wasm_bindgen]
     pub fn first_input(&mut self, shelves: i32, slot1: i32, slot2: i32, slot3: i32,
         shelves_s: i32, slot_s1: i32, slot_s2: i32, slot_s3: i32) {    
         for seed in self.start_size.clone() {
@@ -67,9 +70,9 @@ impl Cracker {
     #[wasm_bindgen]
     pub fn add_input(&mut self, shelves: i32, slot1: i32, slot2: i32, slot3: i32) {
         let rng = &mut self.rng;
-        self.possible_seeds.iter().filter(|&x| {
-            !rng.verify_seed(*x, shelves, slot1, slot2, slot3) 
-        }).for_each(drop);
+        self.possible_seeds.retain(|&x| {
+            rng.verify_seed(x, shelves, slot1, slot2, slot3) 
+        });
     }
 
     pub fn contains(&self, x: i32) -> bool {
