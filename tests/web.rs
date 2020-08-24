@@ -84,50 +84,44 @@ fn cracking() {
 
     {
         let _timer = Timer::new("first input");
-        cracker.first_input(15, 5, 20, 30);
+        cracker.first_input(15, 5, 20, 30, 12, 5, 10, 24);
     }
     let first_amount = cracker.possible_seeds();
     assert!(cracker.contains(-329083225));
 
     {
         let _timer = Timer::new("second input");
-        cracker.add_input(12, 5, 10, 24);
+        cracker.add_input(8, 2, 10, 16);
     }
     assert_ne!(cracker.possible_seeds(), first_amount);
     assert!(cracker.contains(-329083225));
 
     {
         let _timer = Timer::new("third input");
-        cracker.add_input(8, 2, 10, 16);
-    }
-    assert!(cracker.contains(-329083225));
-
-    {
-        let _timer = Timer::new("fourth input");
         cracker.add_input(6, 3, 9, 12);
     }
     assert!(cracker.contains(-329083225));
 
     {
-        let _timer = Timer::new("fifth input");
+        let _timer = Timer::new("fourth input");
         cracker.add_input(4, 1, 9, 8);
     }
     assert!(cracker.contains(-329083225));
 
     {
-        let _timer = Timer::new("sixth input");
+        let _timer = Timer::new("fifth input");
         cracker.add_input(3, 1, 9, 6);
     }
     assert!(cracker.contains(-329083225));
 
     {
-        let _timer = Timer::new("seventh input");
+        let _timer = Timer::new("sixth input");
         cracker.add_input(7, 2, 13, 14);
     }
     assert!(cracker.contains(-329083225));
 
     {
-        let _timer = Timer::new("eigth input");
+        let _timer = Timer::new("seventh input");
         cracker.add_input(14, 6, 12, 28);
     }
     assert!(cracker.contains(-329083225));

@@ -4,7 +4,6 @@ pub mod utils;
 use crate::utils::Rand;
 use wasm_bindgen::prelude::*;
 use std::ops::Range;
-use alloc::string::String;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -49,8 +48,8 @@ impl Cracker {
     }
 
     #[wasm_bindgen]
-    pub fn seed(&mut self) -> String {
-        format!("{:08X}", self.possible_seeds[0])
+    pub fn seed(&mut self) -> i32 {
+        self.possible_seeds[0]
     }
 
     #[wasm_bindgen]
