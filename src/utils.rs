@@ -5,7 +5,7 @@ const MULT: i64 = 0x5DEECE66D;
 const MASK: i64 = (1 << 48) - 1;
 
 pub struct Rand {
-    pub seed: i64,
+    seed: i64,
 }
 
 impl Rand {
@@ -60,3 +60,5 @@ impl Rand {
         self.levels_slot1(shelves) == slot1 && self.levels_slot2(shelves) == slot2 && self.levels_slot3(shelves) == slot3
     }
 }
+
+
