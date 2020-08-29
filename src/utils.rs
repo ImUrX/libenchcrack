@@ -1,4 +1,3 @@
-extern crate web_sys;
 use std::cmp;
 use std::num::Wrapping;
 
