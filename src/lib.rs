@@ -1,4 +1,3 @@
-extern crate alloc;
 pub mod utils;
 
 use crate::utils::Rand;
@@ -42,17 +41,17 @@ impl Cracker {
         self.possible_seeds.clear();
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(getter = possibleSeeds)]
     pub fn possible_seeds(&self) -> usize {
         self.possible_seeds.len()
     }
 
-    #[wasm_bindgen]
-    pub fn seed(&mut self) -> i32 {
-        self.possible_seeds[0]
+    #[wasm_bindgen(getter)]
+    pub fn seed(&mut self) -> String {
+        format!("{:#010X}", self.possible_seeds[0]).split_off(2)
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = firstInput)]
     pub fn first_input(&mut self, shelves: i32, slot1: i32, slot2: i32, slot3: i32,
         shelves_s: i32, slot_s1: i32, slot_s2: i32, slot_s3: i32) {    
         for seed in self.start_size.clone() {
@@ -66,12 +65,12 @@ impl Cracker {
         }
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = addInput)]
     pub fn add_input(&mut self, shelves: i32, slot1: i32, slot2: i32, slot3: i32) {
         let rng = &mut self.rng;
-        self.possible_seeds.retain(|&x| {
+        self.possible_seeds.retain(|&x|
             rng.verify_seed(x, shelves, slot1, slot2, slot3) 
-        });
+        );
     }
 
     pub fn contains(&self, x: i32) -> bool {
@@ -84,16 +83,16 @@ pub struct Manipulator {
     player_seed: u64
 }
 
-const middle: u64 = 0x0000_ffff_ffff_0000;
+const MIDDLE: u64 = 0x0000_ffff_ffff_0000;
 #[wasm_bindgen]
 impl Manipulator {
 
     #[wasm_bindgen(constructor)]
-    pub fn new(seed1: u64, seed2: u64) -> Result<Manipulator, JsValue> {
-        let seed1_high = (seed1 << 16) & middle;
-        let seed2_high = (seed2 << 16) & middle;
+    pub fn new(seed1: u32, seed2: u32) -> Result<Manipulator, JsValue> {
+        let seed1_high = ((seed1 as u64) << 16) & MIDDLE;
+        let seed2_high = ((seed2 as u64) << 16) & MIDDLE;
         for seed1_low in 0..65536 {
-            let possible_seed = ((seed1_high | seed1_low) * 0x5DEECE66D + 0xB) & middle;
+            let possible_seed = ((seed1_high | seed1_low) * 0x5DEECE66D + 0xB) & MIDDLE;
             if possible_seed == seed2_high {
                 return Ok(Manipulator {
                     player_seed: possible_seed
@@ -102,4 +101,11 @@ impl Manipulator {
         }
         Err(js_sys::RangeError::new("Coulnd't find an XP Seed").into())
     }
+
+    #[wasm_bindgen(getter = playerSeed)]
+    pub fn player_seed(&self) -> String { // its this that increments size by 5kb or not supporting safari
+        format!("{:#014X}", self.player_seed).split_off(2) // until v14 which is currently on beta (BigInt)
+    }
+
+    
 }

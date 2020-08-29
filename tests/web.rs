@@ -65,20 +65,6 @@ fn rng_next_int() {
 }
 
 #[wasm_bindgen_test]
-fn slots() {
-    let mut rng = Rand::new();
-    rng.set_seed(1949457528);
-    assert_eq!(rng.levels_slot1(4), 2);
-    assert_eq!(rng.levels_slot2(4), 7);
-    assert_eq!(rng.levels_slot3(4), 8);
-    
-    rng.set_seed(1949457528);
-    assert_eq!(rng.levels_slot1(15), 6);
-    assert_eq!(rng.levels_slot2(15), 9);
-    assert_eq!(rng.levels_slot3(15), 30);
-}
-
-#[wasm_bindgen_test]
 fn cracking() {
     let mut cracker = Cracker::new(0, 1);
 

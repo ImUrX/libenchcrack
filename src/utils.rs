@@ -29,7 +29,7 @@ impl Rand {
             r = Wrapping(((bound.0 as i64 * r.0 as i64) >> 31) as i32);
         } else {
             let mut u = r;
-            while {r = u % bound; u - r + m} < Wrapping(0) {
+            while {r = u % bound; u - r + m}.0 < 0 {
                 u = Wrapping(self.next());
             }
         }
@@ -42,16 +42,16 @@ impl Rand {
         first + 1 + (shelves >> 1) + second
     }
 
-    pub fn levels_slot1(&mut self, shelves: i32) -> i32 {
+    fn levels_slot1(&mut self, shelves: i32) -> i32 {
         let slot1 = self.generic_enchantibility(shelves) / 3;
         if slot1 < 1 { 1 } else { slot1 }
     }
 
-    pub fn levels_slot2(&mut self, shelves: i32) -> i32 {
+    fn levels_slot2(&mut self, shelves: i32) -> i32 {
         (self.generic_enchantibility(shelves) * 2 / 3) + 1
     }
 
-    pub fn levels_slot3(&mut self, shelves: i32) -> i32 {
+    fn levels_slot3(&mut self, shelves: i32) -> i32 {
         cmp::max(self.generic_enchantibility(shelves), shelves * 2)
     }
 
