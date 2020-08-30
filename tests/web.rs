@@ -3,10 +3,10 @@
 #![cfg(target_arch = "wasm32")]
 
 extern crate libenchcrack;
-extern crate wasm_bindgen_test;
 use wasm_bindgen_test::*;
 use libenchcrack::Cracker;
 use libenchcrack::utils::Rand;
+use web_sys::console;
 use std::num::Wrapping;
 use std::panic;
 

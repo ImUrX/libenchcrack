@@ -16,9 +16,11 @@ wee_alloc = "0.4.5"
 js-sys = "0.3.44"
 java-rand = "0.2.0"
 serde-json-wasm = "0.2.1"
+meval = "0.2.0"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
+web-sys = { version = "0.3.44", features = ["console"] }
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
