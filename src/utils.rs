@@ -5,7 +5,7 @@ const MULT: i64 = 0x5DEECE66D;
 const MASK: i64 = (1 << 48) - 1;
 
 pub struct Rand {
-    seed: i64,
+    pub seed: i64,
 }
 
 impl Rand {
