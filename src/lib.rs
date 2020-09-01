@@ -47,8 +47,8 @@ impl Cracker {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn seed(&mut self) -> String {
-        format!("{:#010X}", self.possible_seeds[0]).split_off(2)
+    pub fn seed(&mut self) -> i32 {
+        self.possible_seeds[0]
     }
 
     #[wasm_bindgen(js_name = firstInput)]
@@ -78,11 +78,11 @@ impl Cracker {
     }
 }
 
+/*  Passing this to JS, it ruins compatibility with a lot of things (iOS mainly) if i want to do this in wasm ;-;
 #[wasm_bindgen]
 pub struct Manipulator {
     player_seed: u64
 }
-
 const MIDDLE: u64 = 0x0000_ffff_ffff_0000;
 #[wasm_bindgen]
 impl Manipulator {
@@ -103,9 +103,10 @@ impl Manipulator {
     }
 
     #[wasm_bindgen(getter = playerSeed)]
-    pub fn player_seed(&self) -> String { // its this that increments size by 5kb or not supporting safari
-        format!("{:#014X}", self.player_seed).split_off(2) // until v14 which is currently on beta (BigInt)
+    pub fn player_seed(&self) -> u64 {
+        self.player_seed
     }
 
     
 }
+*/
