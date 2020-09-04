@@ -77,36 +77,3 @@ impl Cracker {
         self.possible_seeds.iter().any(|&y| x == y)
     }
 }
-
-/*  Passing this to JS, it ruins compatibility with a lot of things (iOS mainly) if i want to do this in wasm ;-;
-#[wasm_bindgen]
-pub struct Manipulator {
-    player_seed: u64
-}
-const MIDDLE: u64 = 0x0000_ffff_ffff_0000;
-#[wasm_bindgen]
-impl Manipulator {
-
-    #[wasm_bindgen(constructor)]
-    pub fn new(seed1: u32, seed2: u32) -> Result<Manipulator, JsValue> {
-        let seed1_high = ((seed1 as u64) << 16) & MIDDLE;
-        let seed2_high = ((seed2 as u64) << 16) & MIDDLE;
-        for seed1_low in 0..65536 {
-            let possible_seed = ((seed1_high | seed1_low) * 0x5DEECE66D + 0xB) & MIDDLE;
-            if possible_seed == seed2_high {
-                return Ok(Manipulator {
-                    player_seed: possible_seed
-                });
-            }
-        }
-        Err(js_sys::RangeError::new("Coulnd't find an XP Seed").into())
-    }
-
-    #[wasm_bindgen(getter = playerSeed)]
-    pub fn player_seed(&self) -> u64 {
-        self.player_seed
-    }
-
-    
-}
-*/
