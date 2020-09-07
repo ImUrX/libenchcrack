@@ -4,13 +4,13 @@ use std::num::Wrapping;
 const MULT: i64 = 0x5DEECE66D;
 const MASK: i64 = (1 << 48) - 1;
 
-pub struct Rand {
+pub struct SimpleRandom {
     pub seed: i64,
 }
 
-impl Rand {
-    pub fn new() -> Rand {
-        Rand { seed: 0 }
+impl SimpleRandom {
+    pub fn new() -> Self {
+        SimpleRandom { seed: 0 }
     }
 
     pub fn set_seed(&mut self, seed: i64) {
@@ -60,5 +60,3 @@ impl Rand {
         self.levels_slot1(shelves) == slot1 && self.levels_slot2(shelves) == slot2 && self.levels_slot3(shelves) == slot3
     }
 }
-
-
