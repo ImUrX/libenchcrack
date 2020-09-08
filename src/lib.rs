@@ -112,23 +112,41 @@ pub struct Manipulator {
 
 #[wasm_bindgen]
 impl Manipulator {
-    #[wasm_bindgen]
+    #[wasm_bindgen(constructor)]
     pub fn new(seed1: u32, seed2: u32) -> Option<Manipulator> {
+        match Self::calculate_seed(seed1, seed2) {
+            Some(player_seed) => Some(Self {
+                player_seed,
+                items: enum_map! {
+                    _ => ItemInstance::new(),
+                }
+            }),
+            None => None
+        }
+    }
+
+    fn calculate_seed(seed1: u32, seed2: u32) -> Option<u64> {
         let seed1_high = ((seed1 as u64) << 16) & 0x0000_FFFF_FFFF_0000;
         let seed2_high = ((seed2 as u64) << 16) & 0x0000_FFFF_FFFF_0000;
 
         for seed1_low in 0..65536 {
             let part: u64 = (Wrapping(seed1_high | seed1_low) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0;
             if (part & 0x0000_FFFF_FFFF_0000) == seed2_high {
-                return Some(Self {
-                    player_seed: part & 0x0000_FFFF_FFFF_FFFF,
-                    items: enum_map! {
-                        _ => ItemInstance::new(),
-                    }
-                })
+                return Some(part & 0x0000_FFFF_FFFF_FFFF);
             }
         }
         None
+    }
+
+    #[wasm_bindgen(js_name = changeSeed)]
+    pub fn change_seed(&mut self, seed1: u32, seed2: u32) -> bool {
+        match Self::calculate_seed(seed1, seed2) {
+            Some(new_seed) => {
+                self.player_seed = new_seed;
+                true
+            },
+            None => false
+        }
     }
 
     #[wasm_bindgen(getter = playerSeed)]
