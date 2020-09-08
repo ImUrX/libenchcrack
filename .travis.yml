@@ -1,9 +1,10 @@
-language: rust
-sudo: false
+os: linux
+dist: xenial
 
+language: rust
 cache: cargo
 
-matrix:
+jobs:
   include:
     # Builds with wasm-pack.
     - rust: stable
