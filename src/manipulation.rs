@@ -31,7 +31,7 @@ impl Version {
 }
 
 #[wasm_bindgen]
-#[derive(AsRefStr)]
+#[derive(AsRefStr, EnumIter)]
 pub enum Material {
     Netherite,
     Diamond,
@@ -63,7 +63,7 @@ const SORT: &[SortFn; SET_MATERIAL] = &[
 impl Material {
     pub fn get_items(&self) -> [Item; SET_MATERIAL] {
         let mut arr = [Item::Book; SET_MATERIAL];
-        for (item, out) in Item::iter().filter(|x| self.is_material(x)).zip(arr.iter_mut()) {
+        for (item, out) in Item::iter().filter(|x| self.has_item(x, false)).zip(arr.iter_mut()) {
             *out = item;
         }
         for (i, func) in SORT.iter().enumerate() {
@@ -74,19 +74,14 @@ impl Material {
         arr
     }
 
-    pub fn is_material(&self, item: &Item) -> bool {
+    pub fn has_item(&self, item: &Item, not_js: bool) -> bool {
         let name = item.as_ref();
+        if not_js { return name.starts_with(self.as_ref()); }
         match self {
-            Self::Netherite => name.starts_with(self.as_ref()),
-            Self::Diamond => name.starts_with(self.as_ref()),
-            Self::Golden => name.starts_with(self.as_ref()),
-            Self::Iron => name.starts_with(self.as_ref()),
-            Self::Chainmail => name.starts_with(self.as_ref()),
-            Self::Fire => Self::Chainmail.is_material(item) || (Self::Iron.is_material(item) && (item.is_tool() || item.is_sword())),
-            Self::Turtle => name.starts_with(self.as_ref()),
-            Self::Leather => name.starts_with(self.as_ref()),
-            Self::Stone => Self::Turtle.is_material(item) || (Self::Leather.is_material(item) && item.is_armor() && !item.is_helmet()) || name.starts_with("Stone"),
-            Self::Wooden => Self::Leather.is_material(item) || name.starts_with(self.as_ref())
+            Self::Fire => Self::Chainmail.has_item(item, true) || (Self::Iron.has_item(item, true) && (item.is_tool() || item.is_sword())),
+            Self::Stone => Self::Turtle.has_item(item, true) || (Self::Leather.has_item(item, true) && item.is_armor() && !item.is_helmet()) || name.starts_with(self.as_ref()),
+            Self::Wooden => Self::Leather.has_item(item, true) || name.starts_with(self.as_ref()),
+            _ => name.starts_with(self.as_ref())
         }
     }
 }
@@ -218,26 +213,34 @@ impl Item {
     pub fn has_durability(&self) -> bool {
         self.is_armor() || self.is_sword() || self.is_tool()
         || [Item::Bow, Item::CarrotOnAStick, Item::Elytra, Item::FishingRod,
-        Item::FlintAndSteel, Item::Shears, Item::Shield, Item::Trident, Item::Crossbow].iter().any(|x| x == self)
+        Item::FlintAndSteel, Item::Shears, Item::Shield, Item::Trident, Item::Crossbow].contains(self)
     }
 
     pub fn get_enchantability(&self) -> i32 {
-        if self.is_armor() {
-            if Material::Leather.is_material(self) { return 15; }
-            if Material::Iron.is_material(self) { return 9; }
-            if Material::Chainmail.is_material(self) { return 12; }
-            if Material::Golden.is_material(self) { return 25; }
-            if Material::Diamond.is_material(self) { return 10; }
-            if Material::Turtle.is_material(self) { return 9; }
-            if Material::Netherite.is_material(self) { return 15; }
-        } else if self.is_sword() || self.is_tool() {
-            if Material::Wooden.is_material(self) { return 15; }
-            if Material::Stone.is_material(self) { return 5; }
-            if Material::Iron.is_material(self) { return 14; }
-            if Material::Golden.is_material(self) { return 22; }
-            if Material::Diamond.is_material(self) { return 10; }
-            if Material::Netherite.is_material(self) { return 15; }
-        }
+        if let Some(mat) = self.get_material() {
+            if self.is_armor() {
+                return match mat {
+                    Material::Leather => 15,
+                    Material::Iron => 9,
+                    Material::Chainmail => 12,
+                    Material::Golden => 25,
+                    Material::Diamond => 10,
+                    Material::Turtle => 9,
+                    Material::Netherite => 15,
+                    _ => 0
+                };
+            } else if self.is_sword() || self.is_tool() {
+                return match mat {
+                    Material::Wooden => 15,
+                    Material::Stone => 5,
+                    Material::Iron => 14,
+                    Material::Golden => 22,
+                    Material::Diamond => 10,
+                    Material::Netherite => 15,
+                    _ => 0
+                };
+            }
+        };
         match self {
             Item::Bow | Item::FishingRod | Item::Trident | Item::Crossbow | Item::Book => 1,
             _ => 0
@@ -245,13 +248,17 @@ impl Item {
     }
 
     pub fn get_introduced_version(&self) -> Version {
-        if self.as_ref().starts_with("Netherite") { return Version::V1_16; }
+        if Material::Netherite.has_item(self, true) { return Version::V1_16; }
         match self {
             Item::Elytra | Item::Shield => Version::V1_9,
             Item::Trident | Item::TurtleHelmet => Version::V1_13,
             Item::Crossbow => Version::V1_14,
             _ => Version::V1_8
         }
+    }
+
+    pub fn get_material(&self) -> Option<Material> {
+        Material::iter().find(|x| x.has_item(self, true))
     }
 }
 
