@@ -1,5 +1,4 @@
 //! Test suite for the Web and headless browsers.
-
 #![cfg(target_arch = "wasm32")]
 
 extern crate libenchcrack;
@@ -75,6 +74,21 @@ fn testings() {
         console_log!("{:#?}", ench);
     }
 }*/
+
+#[wasm_bindgen_test]
+fn material() {
+    assert_eq!(Material::Netherite.get_items(), [
+        Item::NetheriteHelmet,
+        Item::NetheriteChestplate,
+        Item::NetheriteLeggings,
+        Item::NetheriteBoots,
+        Item::NetheriteSword,
+        Item::NetheritePickaxe,
+        Item::NetheriteAxe,
+        Item::NetheriteShovel,
+        Item::NetheriteHoe
+    ]);
+}
 
 #[wasm_bindgen_test]
 fn manipulator() {

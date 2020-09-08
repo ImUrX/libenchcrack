@@ -30,10 +30,72 @@ impl Version {
     }
 }
 
+#[wasm_bindgen]
+#[derive(AsRefStr)]
+pub enum Material {
+    Netherite,
+    Diamond,
+    Golden,
+    Iron,
+    Chainmail, //not for js
+    Fire,
+    Turtle, //not for js
+    Leather, //not for js
+    Stone,
+    Wooden
+}
+
+pub const SET_MATERIAL: usize = 9;
+
+type SortFn<'r> = &'r dyn Fn(Item) -> bool;
+const SORT: &[SortFn; SET_MATERIAL] = &[
+    &|x| x.is_helmet(),
+    &|x| x.is_chestplate(),
+    &|x| x.is_leggings(),
+    &|x| x.is_boots(),
+    &|x| x.is_sword(),
+    &|x| x.is_pickaxe(),
+    &|x| x.is_axe(),
+    &|x| x.is_shovel(),
+    &|x| x.is_hoe()
+];
+
+impl Material {
+    pub fn get_items(&self) -> [Item; SET_MATERIAL] {
+        let mut arr = [Item::Book; SET_MATERIAL];
+        for (item, out) in Item::iter().filter(|x| self.is_material(x)).zip(arr.iter_mut()) {
+            *out = item;
+        }
+        for (i, func) in SORT.iter().enumerate() {
+            for j in i..SET_MATERIAL {
+                if func(arr[j]) { arr.swap(i, j) }
+            }
+        }
+        arr
+    }
+
+    pub fn is_material(&self, item: &Item) -> bool {
+        let name = item.as_ref();
+        match self {
+            Self::Netherite => name.starts_with(self.as_ref()),
+            Self::Diamond => name.starts_with(self.as_ref()),
+            Self::Golden => name.starts_with(self.as_ref()),
+            Self::Iron => name.starts_with(self.as_ref()),
+            Self::Chainmail => name.starts_with(self.as_ref()),
+            Self::Fire => Self::Chainmail.is_material(item) || (Self::Iron.is_material(item) && (item.is_tool() || item.is_sword())),
+            Self::Turtle => name.starts_with(self.as_ref()),
+            Self::Leather => name.starts_with(self.as_ref()),
+            Self::Stone => Self::Turtle.is_material(item) || (Self::Leather.is_material(item) && item.is_armor() && !item.is_helmet()) || name.starts_with("Stone"),
+            Self::Wooden => Self::Leather.is_material(item) || name.starts_with(self.as_ref())
+        }
+    }
+}
+
 // I think the probability of this getting optimized by the compiler is low but who cares
 // and maybe im wrong and the compiler is smarter than im (surely it is)
 #[wasm_bindgen]
-#[derive(AsRefStr, PartialEq, Copy, Clone, Enum)]
+#[derive(AsRefStr, EnumIter, PartialEq, Copy, Clone, Enum, Debug)]
+// I tried to do cfg_attr(test, derive(Debug)) but it didn't work?? I misunderstood something for sure...
 pub enum Item {
     LeatherHelmet,
     LeatherChestplate,
@@ -137,9 +199,20 @@ impl Item {
         self.as_ref().ends_with("Axe")
     }
 
+    pub fn is_pickaxe(&self) -> bool {
+        self.as_ref().ends_with("Pickxe")
+    }
+
+    pub fn is_shovel(&self) -> bool {
+        self.as_ref().ends_with("Shovel")
+    }
+
+    pub fn is_hoe(&self) -> bool {
+        self.as_ref().ends_with("Hoe")
+    }
+
     pub fn is_tool(&self) -> bool {
-        let name: &str = self.as_ref();
-        self.is_axe() || name.ends_with("Pickaxe") || name.ends_with("Shovel") || name.ends_with("Hoe")
+        self.is_axe() || self.is_pickaxe() || self.is_shovel() || self.is_hoe()
     }
 
     pub fn has_durability(&self) -> bool {
@@ -149,22 +222,21 @@ impl Item {
     }
 
     pub fn get_enchantability(&self) -> i32 {
-        let name: &str = self.as_ref();
         if self.is_armor() {
-            if name.starts_with("Leather") { return 15; }
-            if name.starts_with("Iron") { return 9; }
-            if name.starts_with("Chainmail") { return 12; }
-            if name.starts_with("Golden") { return 25; }
-            if name.starts_with("Diamond") { return 10; }
-            if name.starts_with("Turtle") { return 9; }
-            if name.starts_with("Netherite") { return 15; }
+            if Material::Leather.is_material(self) { return 15; }
+            if Material::Iron.is_material(self) { return 9; }
+            if Material::Chainmail.is_material(self) { return 12; }
+            if Material::Golden.is_material(self) { return 25; }
+            if Material::Diamond.is_material(self) { return 10; }
+            if Material::Turtle.is_material(self) { return 9; }
+            if Material::Netherite.is_material(self) { return 15; }
         } else if self.is_sword() || self.is_tool() {
-            if name.starts_with("Wooden") { return 15; }
-            if name.starts_with("Stone") { return 5; }
-            if name.starts_with("Iron") { return 14; }
-            if name.starts_with("Golden") { return 22; }
-            if name.starts_with("Diamond") { return 10; }
-            if name.starts_with("Netherite") { return 15; }
+            if Material::Wooden.is_material(self) { return 15; }
+            if Material::Stone.is_material(self) { return 5; }
+            if Material::Iron.is_material(self) { return 14; }
+            if Material::Golden.is_material(self) { return 22; }
+            if Material::Diamond.is_material(self) { return 10; }
+            if Material::Netherite.is_material(self) { return 15; }
         }
         match self {
             Item::Bow | Item::FishingRod | Item::Trident | Item::Crossbow | Item::Book => 1,
@@ -427,7 +499,7 @@ impl Enchantment {
         if enchantability == 0 || self.is_treasure() || !self.can_apply(item, true) {
             return 0;
         }
-        let mut level = 30 + 1 + enchantability/2;
+        let mut level = 30 + 1 + enchantability/4 + enchantability/4;
         level += ((level as f32) * 0.15).round() as i32;
         for max_level in (1..=self.get_max_level()).rev() {
             if level >= self.get_min_enchantability(max_level) {
@@ -487,7 +559,7 @@ impl Enchantment {
         }
 
         level += 1 + rand.next_i32_bound(enchantability/4 + 1) + rand.next_i32_bound(enchantability/4 + 1);
-        let percent_change: f32 = (rand.next_f32() + rand.next_f32() - 1 as f32) * 0.15;
+        let percent_change: f32 = (rand.next_f32() + rand.next_f32() - 1f32) * 0.15;
         level += (level as f32 * percent_change).round() as i32;
         if level < 1 {
             level = 1;

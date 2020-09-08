@@ -10,9 +10,6 @@ use std::ops::Range;
 use enum_map::{enum_map, EnumMap};
 use std::num::Wrapping;
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
@@ -274,5 +271,52 @@ impl Manipulator {
     #[wasm_bindgen(js_name = updateItem)]
     pub fn update_item(&mut self, item: Item, ench: &EnchantmentInstance) {
         self.items[item].update(ench);
+    }
+}
+
+// this is is an struct because yay js util class! (not very rusty, ikr)
+// I do all this because you cant put methods into enums shared to js
+#[wasm_bindgen]
+pub struct Utilities {}
+
+#[wasm_bindgen]
+impl Utilities {
+    #[wasm_bindgen(js_name = itemIntroducedVersion)]
+    pub fn item_introduced_version(item: Item) -> Version {
+        item.get_introduced_version()
+    }
+
+    #[wasm_bindgen(js_name = enchantmentIntroducedVersion)]
+    pub fn enchantment_introduced_version(ench: Enchantment) -> Version {
+        ench.get_introduced_version()
+    }
+
+    #[wasm_bindgen(js_name = getMaxLevelInTable)]
+    pub fn get_max_level_in_table(ench: Enchantment, item: Item) -> i32 {
+        ench.get_max_level_in_table(item)
+    }
+
+    #[wasm_bindgen(js_name = areEnchantmentsCompatible)]
+    pub fn are_enchantments_compatible(ench1: Enchantment, ench2: Enchantment, version: Version) -> bool {
+        ench1.is_compatible_with(ench2, version)
+    }
+
+    #[wasm_bindgen(js_name = isTreasure)]
+    pub fn is_treasure(ench: Enchantment) -> bool {
+        ench.is_treasure()
+    }
+
+    #[wasm_bindgen(js_name = canApply)]
+    pub fn can_apply(ench: Enchantment, item: Item) -> bool {
+        ench.can_apply(item, false)
+    }
+
+    #[wasm_bindgen(js_name = getItems)]
+    pub fn get_items(material: Material) -> js_sys::Uint8Array {
+        let arr = js_sys::Uint8Array::new_with_length(SET_MATERIAL as u32);
+        for (i, item) in material.get_items().iter().enumerate() {
+            arr.set_index(i as u32, *item as u8);
+        }
+        arr
     }
 }
