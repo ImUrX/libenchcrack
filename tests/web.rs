@@ -3,7 +3,6 @@
 #![cfg(target_arch = "wasm32")]
 
 extern crate libenchcrack;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
 use libenchcrack::*;
 use libenchcrack::manipulation::*;
@@ -27,30 +26,6 @@ impl<'a> Drop for Timer<'a> {
     fn drop(&mut self) {
         console::time_end_with_label(self.name);
     }
-}
-
-#[wasm_bindgen]
-extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
-
-    // Multiple arguments too!
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_many(a: &str, b: &str);
-}
-
-macro_rules! console_log {
-    // Note that this is using the `log` function imported above during
-    // `bare_bones`
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -108,7 +83,7 @@ fn manipulator() {
     let hex = vec!(0x2e, 0x3d, 0xf9, 0x6e, 0x1c, 0x9d);
     assert_eq!(hex.len(), 6); // 6 bytes
     assert_eq!(man.player_seed().to_vec(), hex);
-    let mut enchs = [EnchantmentInstance::new(Enchantment::BaneOfArthropods, 5), 
+    let enchs = [EnchantmentInstance::new(Enchantment::BaneOfArthropods, 5), 
         EnchantmentInstance::new(Enchantment::FireAspect, 2), 
         EnchantmentInstance::new(Enchantment::Knockback, -1)];
     for ench in enchs.iter() {
