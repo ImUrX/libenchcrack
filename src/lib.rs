@@ -190,19 +190,21 @@ impl Manipulator {
                     // Does this list contain all the enchantments we want?
                     // I ended up changing it a little, level -1 means not wanted
                     for ench in self.items[item].enchantments.iter() {
-                        if ench.level == -1 {
-                            for found_ench in enchantments.iter() {
-                                if ench.enchantment == found_ench.enchantment { continue 'slotLoop; }
-                            }
-                        } else {
-                            let mut found = false;
-                            for found_ench in enchantments.iter() {
-                                if ench.enchantment != found_ench.enchantment { continue; } 
-                                if ench.level > found_ench.level { continue 'slotLoop; }
-                                found = true;
-                                break;
-                            }
-                            if !found { continue 'slotLoop; }
+                        if ench.level == -1 { continue; }
+                        let mut found = false;
+                        for found_ench in enchantments.iter() {
+                            if ench.enchantment != found_ench.enchantment { continue; } 
+                            if ench.level > found_ench.level { continue 'slotLoop; }
+                            found = true;
+                            break;
+                        }
+                        if !found { continue 'slotLoop; }
+                    }
+
+                    for ench in self.items[item].enchantments.iter() {
+                        if ench.level != -1 { continue; }
+                        for found_ench in enchantments.iter() {
+                            if ench.enchantment == found_ench.enchantment { continue 'slotLoop; }
                         }
                     }
 
