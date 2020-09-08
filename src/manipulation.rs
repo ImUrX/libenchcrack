@@ -1,11 +1,10 @@
-use num_enum::IntoPrimitive;
+use enum_map::Enum;
 use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
 use std::cmp;
 
 #[wasm_bindgen]
-#[derive(IntoPrimitive, Copy, Clone, PartialEq)]
-#[repr(u8)]
+#[derive(Copy, Clone, PartialEq, PartialOrd)]
 pub enum Version {
     V1_8,
     V1_9,
@@ -19,11 +18,11 @@ pub enum Version {
 
 impl Version {
     pub fn before(&self, other: Version) -> bool {
-        u8::from(*self) < u8::from(other)
+        *self < other
     }
 
     pub fn after(&self, other: Version) -> bool {
-        u8::from(*self) > u8::from(other)
+        *self > other
     }
 
     pub fn latest() -> Self {
@@ -34,7 +33,7 @@ impl Version {
 // I think the probability of this getting optimized by the compiler is low but who cares
 // and maybe im wrong and the compiler is smarter than im (surely it is)
 #[wasm_bindgen]
-#[derive(AsRefStr, PartialEq, Copy, Clone)]
+#[derive(AsRefStr, PartialEq, Copy, Clone, Enum)]
 pub enum Item {
     LeatherHelmet,
     LeatherChestplate,
@@ -500,7 +499,7 @@ impl Enchantment {
         }
 
         {
-            let ench = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment().get_weight(version));
+            let ench = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version));
             if ench.is_some() {
                 enchs.push(ench.unwrap());
             }
@@ -512,16 +511,16 @@ impl Enchantment {
                 allowed_enchs = Self::get_highest_allowed_enchantments(level, item, treasure, version);
             }
 
-            for ench in &enchs {
-                let enchantment = ench.enchantment();
-                allowed_enchs.retain(|x| x.enchantment().is_compatible_with(enchantment, version));
+            for ench in enchs.iter() {
+                let enchantment = ench.enchantment;
+                allowed_enchs.retain(|x| x.enchantment.is_compatible_with(enchantment, version));
             }
 
             if allowed_enchs.is_empty() {
                 break;
             }
 
-            let ench = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment().get_weight(version));
+            let ench = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version));
             if ench.is_some() {
                 enchs.push(ench.unwrap());
             }
@@ -560,10 +559,10 @@ impl Enchantment {
 }
 
 #[wasm_bindgen]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct EnchantmentInstance {
-    enchantment: Enchantment,
-    level: i32
+    pub enchantment: Enchantment,
+    pub level: i32
 }
 
 #[wasm_bindgen]
@@ -573,13 +572,5 @@ impl EnchantmentInstance {
         EnchantmentInstance {
             enchantment, level
         }
-    }
-
-    pub fn enchantment(&self) -> Enchantment {
-        self.enchantment
-    }
-
-    pub fn level(&self) -> i32 {
-        self.level
     }
 }

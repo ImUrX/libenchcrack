@@ -4,8 +4,10 @@ pub mod utils;
 pub mod manipulation;
 
 use crate::utils::SimpleRandom;
+use crate::manipulation::*;
 use wasm_bindgen::prelude::*;
 use std::ops::Range;
+use enum_map::{enum_map, EnumMap};
 use std::num::Wrapping;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -82,18 +84,36 @@ impl Cracker {
     }
 }
 
+pub struct ItemInstance {
+    enchantments: Vec<EnchantmentInstance>,
+}
+
+impl ItemInstance {
+    pub fn new() -> Self {
+        Self {
+            enchantments: Vec::new(),
+        }
+    }
+
+    pub fn update(&mut self, ench: &EnchantmentInstance) {
+        let opt = self.enchantments.iter().position(|x| *x == *ench);
+        match opt {
+            Some(index) => self.enchantments[index].level = ench.level,
+            None => self.enchantments.push(ench.clone())
+        }
+    }
+}
+
 #[wasm_bindgen]
 pub struct Manipulator {
     player_seed: u64,
-    item: manipulation::Item,
-    wanted: Vec<manipulation::EnchantmentInstance>,
-    unwanted: Vec<manipulation::EnchantmentInstance>
+    items: EnumMap<Item, ItemInstance>
 }
 
 #[wasm_bindgen]
 impl Manipulator {
     #[wasm_bindgen]
-    pub fn new(seed1: u32, seed2: u32, item: manipulation::Item) -> Option<Manipulator> {
+    pub fn new(seed1: u32, seed2: u32) -> Option<Manipulator> {
         let seed1_high = ((seed1 as u64) << 16) & 0x0000_FFFF_FFFF_0000;
         let seed2_high = ((seed2 as u64) << 16) & 0x0000_FFFF_FFFF_0000;
 
@@ -102,8 +122,9 @@ impl Manipulator {
             if (part & 0x0000_FFFF_FFFF_0000) == seed2_high {
                 return Some(Self {
                     player_seed: part & 0x0000_FFFF_FFFF_FFFF,
-                    wanted: Vec::new(),
-                    unwanted: Vec::new(), item
+                    items: enum_map! {
+                        _ => ItemInstance::new(),
+                    }
                 })
             }
         }
@@ -121,26 +142,10 @@ impl Manipulator {
     }
 
     #[wasm_bindgen]
-    pub fn want(&mut self, ench: manipulation::EnchantmentInstance) {
-        self.wanted.push(ench);
-    }
-
-    #[wasm_bindgen(js_name = notWant)]
-    pub fn not_want(&mut self, ench: manipulation::EnchantmentInstance) {
-        self.unwanted.push(ench);
-    }
-
-    #[wasm_bindgen]
-    pub fn reset(&mut self) {
-        self.wanted.clear();
-        self.unwanted.clear();
-    }
-
-    #[wasm_bindgen]
-    pub fn simulate(&mut self, max_shelves: i32, player_level: i32, version: manipulation::Version) -> Option<js_sys::Int32Array> {
+    pub fn simulate(&mut self, item: Item, max_shelves: i32, player_level: i32, version: Version) -> Option<js_sys::Int32Array> {
         let mut seed = self.player_seed;
         let array = js_sys::Int32Array::new_with_length(3);
-        if self.wanted.is_empty() {
+        if self.items[item].enchantments.is_empty() {
             return None;
         }
         // same as original EnchCracker
@@ -166,7 +171,7 @@ impl Manipulator {
 
                 //Calculate all slot levels
                 for j in 0..3 {
-                    let mut level = manipulation::Enchantment::calc_enchantment_table_level(&mut rand, j, bookshelves, self.item);
+                    let mut level = Enchantment::calc_enchantment_table_level(&mut rand, j, bookshelves, item);
                     if level < j + 1{
                         level = 0;
                     }
@@ -176,32 +181,22 @@ impl Manipulator {
                 'slotLoop: for j in 0..3 {
                     slot = j as i32;
                     // Get enchantments (changes RNG seed)
-                    let enchantments = manipulation::Enchantment::get_enchantments_in_table(&mut rand, xp_seed as i32, self.item, j as i32, enchant_levels[j], version);
+                    let enchantments = Enchantment::get_enchantments_in_table(&mut rand, xp_seed as i32, item, j as i32, enchant_levels[j], version);
                     
-                    if enchant_levels[j] == 0 {
+                    if enchant_levels[j] == 0 || (i == -1 && player_level < enchant_levels[j]) || (player_level < enchant_levels[j] + 1) {
                         continue 'slotLoop;
-                    } else if i == -1 && player_level < enchant_levels[j] {
-                        continue 'slotLoop
-                    } else if player_level < enchant_levels[j] + 1 {
-                        continue 'slotLoop
                     }
 
                     // Does this list contain all the enchantments we want?
-                    for wanted_ench in &self.wanted {
-                        let mut found = false;
-                        for ench in &enchantments {
-                            if wanted_ench.enchantment() != ench.enchantment() { continue; }
-                            if wanted_ench.level() > ench.level() { continue 'slotLoop; }
-                            found = true;
-                            break;
-                        }
-                        if !found { continue 'slotLoop; }
-                    }
-
-                    for unwanted_ench in &self.unwanted {
-                        for ench in &enchantments {
-                            if unwanted_ench.enchantment() == ench.enchantment() { continue 'slotLoop; }
-                        }
+                    // I ended up changing it a little, level -1 means not wanted
+                    for ench in self.items[item].enchantments.iter() {
+                        let mut repeat = false;
+                        let found = enchantments.iter().any(|x| {
+                            if ench.enchantment != x.enchantment { return false; }
+                            if ench.level == -1 || ench.level > x.level { repeat = true; }
+                            true
+                        });
+                        if !found || repeat { continue 'slotLoop; }
                     }
 
                     times_needed = i;
@@ -223,8 +218,8 @@ impl Manipulator {
         Some(array)
     }
 
-    #[wasm_bindgen]
-    pub fn update(&mut self, times_needed: i32, chosen_slot: i32, player_level: i32) -> i32 {
+    #[wasm_bindgen(js_name = updateSeed)]
+    pub fn update_seed(&mut self, times_needed: i32, chosen_slot: i32, player_level: i32) -> i32 {
         if times_needed == -2 || chosen_slot == -1 {
             return player_level;
         }
@@ -247,5 +242,10 @@ impl Manipulator {
             player_level -= 1;
         }
         player_level - (chosen_slot + 1)
+    }
+
+    #[wasm_bindgen(js_name = updateItem)]
+    pub fn update_item(&mut self, item: Item, ench: &EnchantmentInstance) {
+        self.items[item].update(ench);
     }
 }

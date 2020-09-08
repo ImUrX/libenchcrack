@@ -103,14 +103,18 @@ fn testings() {
 
 #[wasm_bindgen_test]
 fn manipulator() {
-    let mut man = Manipulator::new(2893231007, 2635886329, Item::NetheriteSword).expect("Wrong seeds");
+    let item = Item::NetheriteSword;
+    let mut man = Manipulator::new(2893231007, 2635886329).expect("Wrong seeds");
     let hex = vec!(0x2e, 0x3d, 0xf9, 0x6e, 0x1c, 0x9d);
     assert_eq!(hex.len(), 6); // 6 bytes
     assert_eq!(man.player_seed().to_vec(), hex);
-    man.want(EnchantmentInstance::new(Enchantment::BaneOfArthropods, 5));
-    man.want(EnchantmentInstance::new(Enchantment::FireAspect, 2));
-    man.not_want(EnchantmentInstance::new(Enchantment::Knockback, 1));
-    let v = man.simulate(15, 999, Version::V1_16).expect("Simulation Failed").to_vec();
+    let mut enchs = [EnchantmentInstance::new(Enchantment::BaneOfArthropods, 5), 
+        EnchantmentInstance::new(Enchantment::FireAspect, 2), 
+        EnchantmentInstance::new(Enchantment::Knockback, -1)];
+    for ench in enchs.iter() {
+        man.update_item(item, ench);
+    }
+    let v = man.simulate(item, 15, 999, Version::V1_16).expect("Simulation Failed").to_vec();
     assert_eq!(v, vec!(57, 15, 3));
 }
 
