@@ -209,7 +209,7 @@ impl Item {
     }
 
     pub fn is_pickaxe(&self) -> bool {
-        self.as_ref().ends_with("Pickxe")
+        self.as_ref().ends_with("Pickaxe")
     }
 
     pub fn is_shovel(&self) -> bool {
