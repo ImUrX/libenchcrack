@@ -10,7 +10,7 @@ jobs:
     - rust: stable
       env: RUST_BACKTRACE=1
       addons:
-        # firefox: latest
+        firefox: latest
         chrome: stable
       before_script:
         - (test -x $HOME/.cargo/bin/cargo-install-update || cargo install cargo-update)
@@ -24,4 +24,4 @@ jobs:
         - mv Cargo.toml Cargo.toml.tmpl
         - cd testing
         - wasm-pack build
-        - travis_wait 30 wasm-pack test --chrome --headless
+        - travis_wait 30 wasm-pack test --firefox --chrome --headless

@@ -30,6 +30,10 @@ impl Version {
     }
 }
 
+pub trait Introduced {
+    fn get_introduced_version(&self) -> Version;
+}
+
 #[wasm_bindgen]
 #[derive(AsRefStr, EnumIter)]
 pub enum Material {
@@ -82,6 +86,16 @@ impl Material {
             Self::Stone => Self::Turtle.has_item(item, true) || (Self::Leather.has_item(item, true) && item.is_armor() && !item.is_helmet()) || name.starts_with(self.as_ref()),
             Self::Wooden => Self::Leather.has_item(item, true) || name.starts_with(self.as_ref()),
             _ => name.starts_with(self.as_ref())
+        }
+    }
+}
+
+impl Introduced for Material {
+    fn get_introduced_version(&self) -> Version {
+        match self {
+            Self::Netherite => Version::V1_16,
+            Self::Turtle => Version::V1_13,
+            _ => Version::V1_8
         }
     }
 }
@@ -247,18 +261,22 @@ impl Item {
         }
     }
 
-    pub fn get_introduced_version(&self) -> Version {
-        if Material::Netherite.has_item(self, true) { return Version::V1_16; }
+    fn get_material(&self) -> Option<Material> {
+        Material::iter().find(|x| x.has_item(self, true))
+    }
+}
+
+impl Introduced for Item {
+    fn get_introduced_version(&self) -> Version {
+        if let Some(mat) = self.get_material() {
+            return mat.get_introduced_version()
+        }
         match self {
             Item::Elytra | Item::Shield => Version::V1_9,
-            Item::Trident | Item::TurtleHelmet => Version::V1_13,
+            Item::Trident => Version::V1_13,
             Item::Crossbow => Version::V1_14,
             _ => Version::V1_8
         }
-    }
-
-    pub fn get_material(&self) -> Option<Material> {
-        Material::iter().find(|x| x.has_item(self, true))
     }
 }
 
@@ -490,17 +508,6 @@ impl Enchantment {
         }
     }
 
-    pub fn get_introduced_version(&self) -> Version {
-        match self {
-            Enchantment::FrostWalker | Enchantment::Mending => Version::V1_9,
-            Enchantment::BindingCurse | Enchantment::VanishingCurse => Version::V1_11,
-            Enchantment::Sweeping => Version::V1_11_1,
-            Enchantment::Loyalty | Enchantment::Impaling | Enchantment::Riptide | Enchantment::Channeling => Version::V1_13,
-            Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => Version::V1_14,
-            _ => Version::V1_8
-        }
-    }
-
     pub fn get_max_level_in_table(&self, item: Item) -> i32 {
         let enchantability = item.get_enchantability();
         if enchantability == 0 || self.is_treasure() || !self.can_apply(item, true) {
@@ -577,11 +584,8 @@ impl Enchantment {
             return enchs;
         }
 
-        {
-            let ench = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version));
-            if ench.is_some() {
-                enchs.push(ench.unwrap());
-            }
+        if let Some(ench) = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version)) {
+            enchs.push(ench)
         }
 
         while rand.next_i32_bound(50) <= level {
@@ -599,9 +603,8 @@ impl Enchantment {
                 break;
             }
 
-            let ench = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version));
-            if ench.is_some() {
-                enchs.push(ench.unwrap());
+            if let Some(ench) = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version)) {
+                enchs.push(ench)
             }
 
             level /= 2;
@@ -627,13 +630,23 @@ impl Enchantment {
 
         let index = v.iter().position(|x| {
             weight -= weight_extractor(x);
-            return weight < 0;
+            weight < 0
         });
 
-        if index.is_none() {
-            return None;
+        Some(v.remove(index?))
+    }
+}
+
+impl Introduced for Enchantment {
+    fn get_introduced_version(&self) -> Version {
+        match self {
+            Enchantment::FrostWalker | Enchantment::Mending => Version::V1_9,
+            Enchantment::BindingCurse | Enchantment::VanishingCurse => Version::V1_11,
+            Enchantment::Sweeping => Version::V1_11_1,
+            Enchantment::Loyalty | Enchantment::Impaling | Enchantment::Riptide | Enchantment::Channeling => Version::V1_13,
+            Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => Version::V1_14,
+            _ => Version::V1_8
         }
-        Some(v.remove(index.unwrap()))
     }
 }
 

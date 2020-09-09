@@ -31,7 +31,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 fn rng_seed() {
-    let mut rng = SimpleRandom::new();
+    let mut rng: SimpleRandom = Default::default();
     rng.set_seed(0);
     assert_eq!(rng.seed, 25214903917);
     rng.set_seed(150123);
@@ -41,27 +41,27 @@ fn rng_seed() {
 }
 
 #[wasm_bindgen_test]
-fn rng_next() {
-    let mut rng = SimpleRandom::new();
+fn rng_next_int() {
+    let mut rng: SimpleRandom = Default::default();
     rng.set_seed(0);
-    assert_eq!(rng.next(), 1569741360);
+    assert_eq!(rng.next_int(), 1569741360);
     rng.set_seed(150123);
-    assert_eq!(rng.next(), 286134746);
+    assert_eq!(rng.next_int(), 286134746);
     rng.set_seed(-500);
-    assert_eq!(rng.next(), 518875706);
+    assert_eq!(rng.next_int(), 518875706);
 }
 
 #[wasm_bindgen_test]
-fn rng_next_int() {
-    let mut rng = SimpleRandom::new();
+fn rng_next_int_bound() {
+    let mut rng: SimpleRandom = Default::default();
     rng.set_seed(0);
-    assert_eq!(rng.next_int(Wrapping(8)), 5);
-    assert_eq!(rng.next_int(Wrapping(8)), 6);
+    assert_eq!(rng.next_int_bound(Wrapping(8)), 5);
+    assert_eq!(rng.next_int_bound(Wrapping(8)), 6);
     rng.set_seed(1949457528);
-    assert_eq!(rng.next_int(Wrapping(8)), 3);
-    assert_eq!(rng.next_int(Wrapping(5)), 0);
+    assert_eq!(rng.next_int_bound(Wrapping(8)), 3);
+    assert_eq!(rng.next_int_bound(Wrapping(5)), 0);
     rng.set_seed(-500);
-    assert_eq!(rng.next_int(Wrapping(15)), 11);
+    assert_eq!(rng.next_int_bound(Wrapping(15)), 11);
 }
 
 /*#[wasm_bindgen_test] 

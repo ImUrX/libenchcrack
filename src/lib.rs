@@ -7,11 +7,36 @@ use crate::utils::SimpleRandom;
 use crate::manipulation::*;
 use wasm_bindgen::prelude::*;
 use std::ops::Range;
-use enum_map::{enum_map, EnumMap};
+use enum_map::EnumMap;
 use std::num::Wrapping;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+#[wasm_bindgen]
+#[derive(Copy, Clone)]
+pub struct EnchantmentTableInfo {
+    shelves: i32,
+    slot1: i32,
+    slot2: i32,
+    slot3: i32
+}
+
+#[wasm_bindgen]
+impl EnchantmentTableInfo {
+    #[wasm_bindgen(constructor)]
+    pub fn new(shelves: i32, slot1: i32, slot2: i32, slot3: i32) -> Self {
+        EnchantmentTableInfo {
+            shelves, slot1, slot2, slot3
+        }
+    }
+}
+
+impl From<EnchantmentTableInfo> for (i32, i32, i32, i32) {
+    fn from(x: EnchantmentTableInfo) -> Self {
+        (x.shelves, x.slot1, x.slot2, x.slot3)
+    }
+}
 
 #[wasm_bindgen]
 pub struct Cracker {
@@ -33,8 +58,8 @@ impl Cracker {
             possible_seeds: Vec::with_capacity((80e6 as usize) / threads),
             start_size: 
                 start..(start as i64 + size as i64) as i32 
-                + if thread_id == threads - 1 { thread_id as i32 } else { 0 } ,
-            rng: SimpleRandom::new(),
+                + if thread_id == threads - 1 { thread_id as i32 } else { 0 },
+            rng: Default::default(),
             thread_id, threads
         }
     }
@@ -55,24 +80,23 @@ impl Cracker {
     }
 
     #[wasm_bindgen(js_name = firstInput)]
-    pub fn first_input(&mut self, shelves: i32, slot1: i32, slot2: i32, slot3: i32,
-        shelves_s: i32, slot_s1: i32, slot_s2: i32, slot_s3: i32) {    
+    pub fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo) {    
         for seed in self.start_size.clone() {
-            if self.rng.verify_seed(seed, shelves, slot1, slot2, slot3) 
-            && self.rng.verify_seed(seed, shelves_s, slot_s1, slot_s2, slot_s3) { self.possible_seeds.push(seed); }
+            if self.rng.verify_seed(seed, info.into()) && self.rng.verify_seed(seed, info2.into()) { 
+                self.possible_seeds.push(seed); 
+            }
         }
 
-        if self.thread_id == self.threads - 1 {
-            if self.rng.verify_seed(i32::MAX, shelves, slot1, slot2, slot3)
-            && self.rng.verify_seed(i32::MAX, shelves_s, slot_s1, slot_s2, slot_s3) { self.possible_seeds.push(i32::MAX); }
+        if self.thread_id == self.threads - 1 && self.rng.verify_seed(i32::MAX, info.into()) && self.rng.verify_seed(i32::MAX, info2.into()) {
+            self.possible_seeds.push(i32::MAX);
         }
     }
 
     #[wasm_bindgen(js_name = addInput)]
-    pub fn add_input(&mut self, shelves: i32, slot1: i32, slot2: i32, slot3: i32) {
+    pub fn add_input(&mut self, info: EnchantmentTableInfo) {
         let rng = &mut self.rng;
         self.possible_seeds.retain(|&x|
-            rng.verify_seed(x, shelves, slot1, slot2, slot3) 
+            rng.verify_seed(x, info.into()) 
         );
     }
 
@@ -81,17 +105,12 @@ impl Cracker {
     }
 }
 
+#[derive(Default)]
 pub struct ItemInstance {
     enchantments: Vec<EnchantmentInstance>,
 }
 
 impl ItemInstance {
-    pub fn new() -> Self {
-        Self {
-            enchantments: Vec::new(),
-        }
-    }
-
     pub fn update(&mut self, ench: &EnchantmentInstance) {
         let opt = self.enchantments.iter().position(|x| *x == *ench);
         match opt {
@@ -114,9 +133,7 @@ impl Manipulator {
         match Self::calculate_seed(seed1, seed2) {
             Some(player_seed) => Some(Self {
                 player_seed,
-                items: enum_map! {
-                    _ => ItemInstance::new(),
-                }
+                items: Default::default()
             }),
             None => None
         }
@@ -185,20 +202,21 @@ impl Manipulator {
                 rand.set_seed(xp_seed);
 
                 //Calculate all slot levels
-                for j in 0..3 {
-                    let mut level = Enchantment::calc_enchantment_table_level(&mut rand, j, bookshelves, item);
-                    if level < j + 1{
+                for (j, original) in enchant_levels.iter_mut().enumerate() {
+                    let num = j as i32;
+                    let mut level = Enchantment::calc_enchantment_table_level(&mut rand, num, bookshelves, item);
+                    if level < num + 1{
                         level = 0;
                     }
-                    enchant_levels[j as usize] = level;
+                    *original = level;
                 }
                 
-                'slotLoop: for j in 0..3 {
+                'slotLoop: for (j, level) in enchant_levels.iter().enumerate() {
                     slot = j as i32;
                     // Get enchantments (changes RNG seed)
-                    let enchantments = Enchantment::get_enchantments_in_table(&mut rand, xp_seed as i32, item, j as i32, enchant_levels[j], version);
+                    let enchantments = Enchantment::get_enchantments_in_table(&mut rand, xp_seed as i32, item, j as i32, *level, version);
                     
-                    if enchant_levels[j] == 0 || (i == -1 && player_level < enchant_levels[j]) || (player_level < enchant_levels[j] + 1) {
+                    if *level == 0 || (i == -1 && player_level < *level) || (player_level < *level + 1) {
                         continue 'slotLoop;
                     }
 
@@ -277,18 +295,27 @@ impl Manipulator {
 // this is is an struct because yay js util class! (not very rusty, ikr)
 // I do all this because you cant put methods into enums shared to js
 #[wasm_bindgen]
-pub struct Utilities {}
+pub struct Utilities;
 
 #[wasm_bindgen]
 impl Utilities {
+    fn get_introduced_version(thing: &dyn Introduced) -> Version {//Traits are not supported yet for wasm
+        thing.get_introduced_version()
+    }
+
+    #[wasm_bindgen(js_name = materialIntroducedVersion)]
+    pub fn material_introduced_version(mat: Material) -> Version {
+        Self::get_introduced_version(&mat)
+    }
+
     #[wasm_bindgen(js_name = itemIntroducedVersion)]
     pub fn item_introduced_version(item: Item) -> Version {
-        item.get_introduced_version()
+        Self::get_introduced_version(&item)
     }
 
     #[wasm_bindgen(js_name = enchantmentIntroducedVersion)]
     pub fn enchantment_introduced_version(ench: Enchantment) -> Version {
-        ench.get_introduced_version()
+        Self::get_introduced_version(&ench)
     }
 
     #[wasm_bindgen(js_name = getMaxLevelInTable)]
