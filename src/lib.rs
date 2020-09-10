@@ -330,15 +330,15 @@ impl Utilities {
     }
 
     #[wasm_bindgen(js_name = getEnchantments)]
-    pub fn get_enchantments(item: Item) -> Option<js_sys::Uint8Array> {
+    pub fn get_enchantments(item: Item) -> js_sys::Uint8Array {
         let iter = Enchantment::iter()
             .filter(|x| x.can_apply(item, true) && !x.is_treasure())
             .map(|x| x as u8);
-        let arr = js_sys::Uint8Array::new_with_length(iter.size_hint().1? as u32);
+        let arr = js_sys::Uint8Array::new_with_length(iter.clone().count() as u32);
         for (i, ench) in iter.enumerate() {
             arr.set_index(i as u32, ench);
         }
-        Some(arr)
+        arr
     }
 
     #[wasm_bindgen(js_name = getItems)]
