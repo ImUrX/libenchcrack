@@ -341,6 +341,11 @@ impl Utilities {
         arr
     }
 
+    #[wasm_bindgen(js_name = isTreasure)]
+    pub fn is_treasure(ench: Enchantment) -> bool {
+        ench.is_treasure()
+    }
+
     #[wasm_bindgen(js_name = getItems)]
     pub fn get_items(material: Material) -> js_sys::Uint8Array {
         let arr = js_sys::Uint8Array::new_with_length(SET_MATERIAL as u32);
