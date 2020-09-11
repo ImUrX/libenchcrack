@@ -84,7 +84,7 @@ impl Material {
         match self {
             Self::Fire => Self::Chainmail.has_item(item, true) || (Self::Iron.has_item(item, true) && (item.is_tool() || item.is_sword())),
             Self::Stone => Self::Turtle.has_item(item, true) || (Self::Leather.has_item(item, true) && item.is_armor() && !item.is_helmet()) || name.starts_with(self.as_ref()),
-            Self::Wooden => Self::Leather.has_item(item, true) || name.starts_with(self.as_ref()),
+            Self::Leather => Self::Wooden.has_item(item, true) || name.starts_with(self.as_ref()),
             _ => name.starts_with(self.as_ref())
         }
     }
