@@ -260,8 +260,8 @@ impl Manipulator {
         }
 
         array.set_index(0, times_needed);
-        array.set_index(1, bookshelves_needed);
-        array.set_index(2, slot + 1);
+        array.set_index(1, slot + 1);
+        array.set_index(2, bookshelves_needed);
         Some(array)
     }
 
