@@ -104,7 +104,7 @@ fn manipulator() {
         man.update_item(item, ench);
     }
     let v = man.simulate(item, 15, 999, Version::V1_16).expect("Simulation Failed").to_vec();
-    assert_eq!(v, vec!(57, 15, 3));
+    assert_eq!(v, vec!(57, 3, 15));
 }
 
 /*#[wasm_bindgen_test]
