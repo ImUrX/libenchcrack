@@ -119,6 +119,10 @@ impl ItemInstance {
             None => self.enchantments.push(ench.clone())
         }
     }
+
+    pub fn reset(&mut self) {
+        self.enchantments.clear();
+    }
 }
 
 #[wasm_bindgen]
@@ -290,6 +294,11 @@ impl Manipulator {
     #[wasm_bindgen(js_name = updateItem)]
     pub fn update_item(&mut self, item: Item, ench: &EnchantmentInstance) {
         self.items[item].update(ench);
+    }
+
+    #[wasm_bindgen]
+    pub fn reset(&mut self, item: Item) {
+        self.items[item].reset();
     }
 }
 
