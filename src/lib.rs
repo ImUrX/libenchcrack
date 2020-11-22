@@ -282,7 +282,7 @@ impl Manipulator {
         //actual enchantment
         self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF;
 
-        player_level - (chosen_slot + 1) + (if times_needed != 1 { -1 } else { 0 })
+        player_level - (chosen_slot + 1) + (if times_needed != -1 { -1 } else { 0 })
     }
 
     #[wasm_bindgen(js_name = updateItem)]
