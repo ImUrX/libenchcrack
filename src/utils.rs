@@ -52,6 +52,32 @@ impl SimpleRandom {
         cmp::max(self.generic_enchantibility(shelves), shelves * 2)
     }
 
+    pub fn first_input(&mut self, seed: i32, (shelves, slot1, slot2, slot3): (i32, i32, i32, i32)) -> bool {
+        let two_shelves = shelves * 2;
+        let half_shelves = shelves / 2 + 1;
+        let shelves_plus_one = shelves + 1;
+
+        let first_early = slot1 * 3 + 2;
+        let second_early = slot2 * 3 / 2;
+        let second_sub_one = slot2 - 1;
+        self.set_seed(seed as i64);
+
+        let ench1r1 = self.next_int_bound(Wrapping(8)) + half_shelves;
+        if ench1r1 > first_early { return false; }
+        let ench1 = (ench1r1 + self.next_int_bound(Wrapping(shelves_plus_one))) * 2 / 3;
+        if (ench1 < 1 && slot1 != 1) || ench1 != slot1 { return false; }
+
+        let ench2r1 = self.next_int_bound(Wrapping(8)) + half_shelves;
+        if ench2r1 > second_early { return false; }
+        let ench2 = (ench2r1 + self.next_int_bound(Wrapping(shelves_plus_one))) * 2 / 3;
+        if ench2 != second_sub_one { return false; }
+
+        let ench3 = self.next_int_bound(Wrapping(8)) + half_shelves + self.next_int_bound(Wrapping(shelves_plus_one));
+        if cmp::max(ench3, two_shelves) != slot3 { return false; }
+
+        true
+    }
+
     pub fn verify_seed(&mut self, seed: i32, (shelves, slot1, slot2, slot3): (i32, i32, i32, i32)) -> bool {
         self.set_seed(seed as i64);
         self.levels_slot1(shelves) == slot1 && self.levels_slot2(shelves) == slot2 && self.levels_slot3(shelves) == slot3
