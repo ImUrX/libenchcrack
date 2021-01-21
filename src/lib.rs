@@ -83,12 +83,12 @@ impl Cracker {
     #[wasm_bindgen(js_name = firstInput)]
     pub fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo) {    
         for seed in self.start_size.clone() {
-            if self.rng.first_input(seed, info.into()) && self.rng.first_input(seed, info2.into()) { 
+            if self.rng.verify_seed(seed, info.into()) && self.rng.verify_seed(seed, info2.into()) { 
                 self.possible_seeds.push(seed); 
             }
         }
 
-        if self.thread_id == self.threads - 1 && self.rng.first_input(i32::MAX, info.into()) && self.rng.first_input(i32::MAX, info2.into()) {
+        if self.thread_id == self.threads - 1 && self.rng.verify_seed(i32::MAX, info.into()) && self.rng.verify_seed(i32::MAX, info2.into()) {
             self.possible_seeds.push(i32::MAX);
         }
     }
