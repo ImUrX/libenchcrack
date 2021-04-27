@@ -194,12 +194,21 @@ impl Manipulator {
         let mut enchant_levels = [0; 3];
 
         'outerLoop: for i in -1..=(64*32) {
-            let xp_seed = if i == -1 {
-                // XP seed will be the current seed, because there is no dummy enchant
-                seed >> 16
-            } else {
-                // XP seed will be the current seed, advanced by one because of the dummy enchant
-                ((Wrapping(seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF) >> 16
+            let xp_seed = {
+                let unsigned = if i == -1 {
+                    // XP seed will be the current seed, because there is no dummy enchant
+                    seed >> 16
+                } else {
+                    // XP seed will be the current seed, advanced by one because of the dummy enchant
+                    ((Wrapping(seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF) >> 16
+                };
+
+                //check if its a negative number
+                if (unsigned as i32) < 0 {
+                    0xffff_ffff << 32 + unsigned
+                } else {
+                    unsigned
+                }
             };
             let mut rand = java_rand::Random::new(0);
             for bookshelves in 0..=max_shelves {
@@ -210,7 +219,7 @@ impl Manipulator {
                 for (j, original) in enchant_levels.iter_mut().enumerate() {
                     let num = j as i32;
                     let mut level = Enchantment::calc_enchantment_table_level(&mut rand, num, bookshelves, item);
-                    if level < num + 1{
+                    if level < num + 1 {
                         level = 0;
                     }
                     *original = level;
