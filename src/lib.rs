@@ -205,7 +205,7 @@ impl Manipulator {
 
                 //check if its a negative number
                 if (unsigned as i32) < 0 {
-                    0xffff_ffff << 32 + unsigned
+                    unsigned + (0xffff_ffff << 32)
                 } else {
                     unsigned
                 }
