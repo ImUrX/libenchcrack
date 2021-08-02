@@ -15,7 +15,7 @@ use wasm_bindgen::prelude::*;
 use std::ops::Range;
 
 #[cfg(feature = "threads")]
-pub use rayon::prelude::*;
+use rayon::prelude::*;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
