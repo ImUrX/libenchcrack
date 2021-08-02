@@ -1,18 +1,29 @@
 extern crate strum;
-#[macro_use] extern crate strum_macros;
-pub mod utils;
+#[macro_use]
+extern crate strum_macros;
 pub mod manipulation;
+pub mod utils;
 
-use crate::utils::SimpleRandom;
 use crate::manipulation::*;
-use wasm_bindgen::prelude::*;
-use strum::IntoEnumIterator;
+use crate::utils::SimpleRandom;
 use enum_map::EnumMap;
-use std::ops::Range;
 use std::num::Wrapping;
+use strum::IntoEnumIterator;
+use wasm_bindgen::prelude::*;
+
+#[cfg(not(feature = "threads"))]
+use std::ops::Range;
+
+#[cfg(feature = "threads")]
+pub use rayon::prelude::*;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+const PREALLOC_SIZE: usize = 80e6 as usize;
+
+#[cfg(feature = "threads")]
+pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen]
 #[derive(Copy, Clone)]
@@ -20,7 +31,7 @@ pub struct EnchantmentTableInfo {
     shelves: i32,
     slot1: i32,
     slot2: i32,
-    slot3: i32
+    slot3: i32,
 }
 
 #[wasm_bindgen]
@@ -28,7 +39,10 @@ impl EnchantmentTableInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(shelves: i32, slot1: i32, slot2: i32, slot3: i32) -> Self {
         EnchantmentTableInfo {
-            shelves, slot1, slot2, slot3
+            shelves,
+            slot1,
+            slot2,
+            slot3,
         }
     }
 }
@@ -42,26 +56,43 @@ impl From<EnchantmentTableInfo> for (i32, i32, i32, i32) {
 #[wasm_bindgen]
 pub struct Cracker {
     possible_seeds: Vec<i32>,
+    #[cfg(not(feature = "threads"))]
     start_size: Range<i32>,
+    #[cfg(not(feature = "threads"))]
     thread_id: usize,
+    #[cfg(not(feature = "threads"))]
     threads: usize,
-    rng: SimpleRandom
+    rng: SimpleRandom,
 }
 
 #[wasm_bindgen]
 impl Cracker {
-
+    #[cfg(not(feature = "threads"))]
     #[wasm_bindgen(constructor)]
     pub fn new(thread_id: usize, threads: usize) -> Self {
         let size = u32::MAX / threads as u32;
         let start = (i32::MIN as i64 + (size * thread_id as u32) as i64) as i32;
         Cracker {
-            possible_seeds: Vec::with_capacity((80e6 as usize) / threads),
-            start_size: 
-                start..(start as i64 + size as i64) as i32 
-                + if thread_id == threads - 1 { thread_id as i32 } else { 0 },
+            possible_seeds: Vec::with_capacity((PREALLOC_SIZE) / threads),
+            start_size: start
+                ..(start as i64 + size as i64) as i32
+                    + if thread_id == threads - 1 {
+                        thread_id as i32
+                    } else {
+                        0
+                    },
             rng: Default::default(),
-            thread_id, threads
+            thread_id,
+            threads,
+        }
+    }
+
+    #[cfg(feature = "threads")]
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Cracker {
+            possible_seeds: Vec::with_capacity(PREALLOC_SIZE),
+            rng: Default::default(),
         }
     }
 
@@ -80,15 +111,29 @@ impl Cracker {
         self.possible_seeds[0]
     }
 
+    #[cfg(feature = "threads")]
     #[wasm_bindgen(js_name = firstInput)]
-    pub fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo) {    
+    pub fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo) {
+        self.possible_seeds
+            .par_extend((i32::MIN..=i32::MAX).into_par_iter().filter(|&x| {
+                let mut rng: SimpleRandom = Default::default();
+                rng.verify_seed(x, info.into()) && rng.verify_seed(x, info2.into())
+            }))
+    }
+
+    #[cfg(not(feature = "threads"))]
+    #[wasm_bindgen(js_name = firstInput)]
+    pub fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo) {
         for seed in self.start_size.clone() {
-            if self.rng.verify_seed(seed, info.into()) && self.rng.verify_seed(seed, info2.into()) { 
-                self.possible_seeds.push(seed); 
+            if self.rng.verify_seed(seed, info.into()) && self.rng.verify_seed(seed, info2.into()) {
+                self.possible_seeds.push(seed);
             }
         }
 
-        if self.thread_id == self.threads - 1 && self.rng.verify_seed(i32::MAX, info.into()) && self.rng.verify_seed(i32::MAX, info2.into()) {
+        if self.thread_id == self.threads - 1
+            && self.rng.verify_seed(i32::MAX, info.into())
+            && self.rng.verify_seed(i32::MAX, info2.into())
+        {
             self.possible_seeds.push(i32::MAX);
         }
     }
@@ -96,9 +141,8 @@ impl Cracker {
     #[wasm_bindgen(js_name = addInput)]
     pub fn add_input(&mut self, info: EnchantmentTableInfo) {
         let rng = &mut self.rng;
-        self.possible_seeds.retain(|&x|
-            rng.verify_seed(x, info.into()) 
-        );
+        self.possible_seeds
+            .retain(|&x| rng.verify_seed(x, info.into()));
     }
 
     pub fn contains(&self, x: i32) -> bool {
@@ -116,7 +160,7 @@ impl ItemInstance {
         let opt = self.enchantments.iter().position(|x| *x == *ench);
         match opt {
             Some(index) => self.enchantments[index].level = ench.level,
-            None => self.enchantments.push(ench.clone())
+            None => self.enchantments.push(ench.clone()),
         }
     }
 
@@ -128,7 +172,7 @@ impl ItemInstance {
 #[wasm_bindgen]
 pub struct Manipulator {
     player_seed: u64,
-    items: EnumMap<Item, ItemInstance>
+    items: EnumMap<Item, ItemInstance>,
 }
 
 #[wasm_bindgen]
@@ -138,9 +182,9 @@ impl Manipulator {
         match Self::calculate_seed(seed1, seed2) {
             Some(player_seed) => Some(Self {
                 player_seed,
-                items: Default::default()
+                items: Default::default(),
             }),
-            None => None
+            None => None,
         }
     }
 
@@ -149,7 +193,8 @@ impl Manipulator {
         let seed2_high = ((seed2 as u64) << 16) & 0x0000_FFFF_FFFF_0000;
 
         for seed1_low in 0..65536 {
-            let part: u64 = (Wrapping(seed1_high | seed1_low) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0;
+            let part: u64 =
+                (Wrapping(seed1_high | seed1_low) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0;
             if (part & 0x0000_FFFF_FFFF_0000) == seed2_high {
                 return Some(part & 0x0000_FFFF_FFFF_FFFF);
             }
@@ -163,8 +208,8 @@ impl Manipulator {
             Some(new_seed) => {
                 self.player_seed = new_seed;
                 true
-            },
-            None => false
+            }
+            None => false,
         }
     }
 
@@ -179,7 +224,13 @@ impl Manipulator {
     }
 
     #[wasm_bindgen]
-    pub fn simulate(&mut self, item: Item, max_shelves: i32, player_level: i32, version: Version) -> Option<js_sys::Int32Array> {
+    pub fn simulate(
+        &mut self,
+        item: Item,
+        max_shelves: i32,
+        player_level: i32,
+        version: Version,
+    ) -> Option<js_sys::Int32Array> {
         let mut seed = self.player_seed;
         let array = js_sys::Int32Array::new_with_length(3);
         if self.items[item].enchantments.is_empty() {
@@ -187,20 +238,22 @@ impl Manipulator {
         }
         // same as original EnchCracker
         // -2: not found; -1: no dummy enchantment needed; >= 0: number of times needed
-		// to throw out item before dummy enchantment
+        // to throw out item before dummy enchantment
         let mut times_needed = -2;
         let mut bookshelves_needed = 0;
         let mut slot = 0;
         let mut enchant_levels = [0; 3];
 
-        'outerLoop: for i in -1..=(64*32) {
+        'outerLoop: for i in -1..=(64 * 32) {
             let xp_seed = {
                 let unsigned = if i == -1 {
                     // XP seed will be the current seed, because there is no dummy enchant
                     seed >> 16
                 } else {
                     // XP seed will be the current seed, advanced by one because of the dummy enchant
-                    ((Wrapping(seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF) >> 16
+                    ((Wrapping(seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0
+                        & 0x0000_FFFF_FFFF_FFFF)
+                        >> 16
                 };
 
                 //check if its a negative number
@@ -218,38 +271,69 @@ impl Manipulator {
                 //Calculate all slot levels
                 for (j, original) in enchant_levels.iter_mut().enumerate() {
                     let num = j as i32;
-                    let mut level = Enchantment::calc_enchantment_table_level(&mut rand, num, bookshelves, item);
+                    let mut level = Enchantment::calc_enchantment_table_level(
+                        &mut rand,
+                        num,
+                        bookshelves,
+                        item,
+                    );
                     if level < num + 1 {
                         level = 0;
                     }
                     *original = level;
                 }
-                
+
                 'slotLoop: for (j, level) in enchant_levels.iter().enumerate() {
                     slot = j as i32;
                     // Get enchantments (changes RNG seed)
-                    let enchantments = Enchantment::get_enchantments_in_table(&mut rand, xp_seed as i32, item, j as i32, *level, version);
-                    
-                    if *level == 0 || (i == -1 && player_level < *level) || (player_level < *level + 1) {
+                    let enchantments = Enchantment::get_enchantments_in_table(
+                        &mut rand,
+                        xp_seed as i32,
+                        item,
+                        j as i32,
+                        *level,
+                        version,
+                    );
+
+                    if *level == 0
+                        || (i == -1 && player_level < *level)
+                        || (player_level < *level + 1)
+                    {
                         continue 'slotLoop;
                     }
 
                     // Does this list contain all the enchantments we want?
                     // I ended up changing it a little, level -1 means not wanted
-                    for ench in self.items[item].enchantments.iter().filter(|x| x.level != -1) {
+                    for ench in self.items[item]
+                        .enchantments
+                        .iter()
+                        .filter(|x| x.level != -1)
+                    {
                         let mut found = false;
                         for found_ench in enchantments.iter() {
-                            if ench.enchantment != found_ench.enchantment { continue; } 
-                            if ench.level > found_ench.level { continue 'slotLoop; }
+                            if ench.enchantment != found_ench.enchantment {
+                                continue;
+                            }
+                            if ench.level > found_ench.level {
+                                continue 'slotLoop;
+                            }
                             found = true;
                             break;
                         }
-                        if !found { continue 'slotLoop; }
+                        if !found {
+                            continue 'slotLoop;
+                        }
                     }
 
-                    for ench in self.items[item].enchantments.iter().filter(|x| x.level == -1) {
+                    for ench in self.items[item]
+                        .enchantments
+                        .iter()
+                        .filter(|x| x.level == -1)
+                    {
                         for found_ench in enchantments.iter() {
-                            if ench.enchantment == found_ench.enchantment { continue 'slotLoop; }
+                            if ench.enchantment == found_ench.enchantment {
+                                continue 'slotLoop;
+                            }
                         }
                     }
 
@@ -261,7 +345,8 @@ impl Manipulator {
             //Simulate item throws
             if i != -1 {
                 for _j in 0..4 {
-                    seed = (Wrapping(seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF;
+                    seed = (Wrapping(seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0
+                        & 0x0000_FFFF_FFFF_FFFF;
                 }
             }
         }
@@ -282,14 +367,19 @@ impl Manipulator {
             //items thrown
             for _i in 0..times_needed {
                 for _j in 0..4 {
-                    self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF;
+                    self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D)
+                        + Wrapping(0xB))
+                    .0 & 0x0000_FFFF_FFFF_FFFF;
                 }
             }
             //dummy enchantment
-            self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF;
+            self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB))
+                .0
+                & 0x0000_FFFF_FFFF_FFFF;
         }
         //actual enchantment
-        self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0 & 0x0000_FFFF_FFFF_FFFF;
+        self.player_seed = (Wrapping(self.player_seed) * Wrapping(0x5DEECE66D) + Wrapping(0xB)).0
+            & 0x0000_FFFF_FFFF_FFFF;
 
         player_level - chosen_slot + (if times_needed != -1 { -1 } else { 0 })
     }
@@ -312,7 +402,8 @@ pub struct Utilities;
 
 #[wasm_bindgen]
 impl Utilities {
-    fn get_introduced_version(thing: &dyn Introduced) -> Version {//Traits are not supported yet for wasm
+    fn get_introduced_version(thing: &dyn Introduced) -> Version {
+        //Traits are not supported yet for wasm
         thing.get_introduced_version()
     }
 
@@ -337,7 +428,11 @@ impl Utilities {
     }
 
     #[wasm_bindgen(js_name = areEnchantmentsCompatible)]
-    pub fn are_enchantments_compatible(ench1: Enchantment, ench2: Enchantment, version: Version) -> bool {
+    pub fn are_enchantments_compatible(
+        ench1: Enchantment,
+        ench2: Enchantment,
+        version: Version,
+    ) -> bool {
         ench1.is_compatible_with(ench2, version)
     }
 

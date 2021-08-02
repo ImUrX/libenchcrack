@@ -18,7 +18,7 @@ impl SimpleRandom {
         self.seed = (Wrapping(self.seed) * Wrapping(MULT) + Wrapping(0xB)).0 & MASK;
         (self.seed as u64 >> 17) as i32
     }
-    
+
     pub fn next_int_bound(&mut self, bound: Wrapping<i32>) -> i32 {
         let mut r = Wrapping(self.next_int());
         let m = bound - Wrapping(1);
@@ -26,7 +26,12 @@ impl SimpleRandom {
             r = Wrapping(((bound.0 as i64 * r.0 as i64) >> 31) as i32);
         } else {
             let mut u = r;
-            while {r = u % bound; u - r + m}.0 < 0 {
+            while {
+                r = u % bound;
+                u - r + m
+            }
+            .0 < 0
+            {
                 u = Wrapping(self.next_int());
             }
         }
@@ -41,7 +46,11 @@ impl SimpleRandom {
 
     fn levels_slot1(&mut self, shelves: i32) -> i32 {
         let slot1 = self.generic_enchantibility(shelves) / 3;
-        if slot1 < 1 { 1 } else { slot1 }
+        if slot1 < 1 {
+            1
+        } else {
+            slot1
+        }
     }
 
     fn levels_slot2(&mut self, shelves: i32) -> i32 {
@@ -52,8 +61,14 @@ impl SimpleRandom {
         cmp::max(self.generic_enchantibility(shelves), shelves * 2)
     }
 
-    pub fn verify_seed(&mut self, seed: i32, (shelves, slot1, slot2, slot3): (i32, i32, i32, i32)) -> bool {
+    pub fn verify_seed(
+        &mut self,
+        seed: i32,
+        (shelves, slot1, slot2, slot3): (i32, i32, i32, i32),
+    ) -> bool {
         self.set_seed(seed as i64);
-        self.levels_slot1(shelves) == slot1 && self.levels_slot2(shelves) == slot2 && self.levels_slot3(shelves) == slot3
+        self.levels_slot1(shelves) == slot1
+            && self.levels_slot2(shelves) == slot2
+            && self.levels_slot3(shelves) == slot3
     }
 }

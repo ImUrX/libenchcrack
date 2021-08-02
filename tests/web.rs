@@ -2,13 +2,13 @@
 #![cfg(target_arch = "wasm32")]
 
 extern crate libenchcrack;
-use wasm_bindgen_test::*;
-use libenchcrack::*;
 use libenchcrack::manipulation::*;
 use libenchcrack::utils::SimpleRandom;
-use web_sys::console;
+use libenchcrack::*;
 use std::num::Wrapping;
 use std::panic;
+use wasm_bindgen_test::*;
+use web_sys::console;
 
 pub struct Timer<'a> {
     name: &'a str,
@@ -64,7 +64,7 @@ fn rng_next_int_bound() {
     assert_eq!(rng.next_int_bound(Wrapping(15)), 11);
 }
 
-/*#[wasm_bindgen_test] 
+/*#[wasm_bindgen_test]
 fn testings() {
     let item = Item::NetheriteSword;
     let mut rand = java_rand::Random::new(10);
@@ -77,33 +77,41 @@ fn testings() {
 
 #[wasm_bindgen_test]
 fn material() {
-    assert_eq!(Material::Netherite.get_items(), [
-        Item::NetheriteHelmet,
-        Item::NetheriteChestplate,
-        Item::NetheriteLeggings,
-        Item::NetheriteBoots,
-        Item::NetheriteSword,
-        Item::NetheritePickaxe,
-        Item::NetheriteAxe,
-        Item::NetheriteShovel,
-        Item::NetheriteHoe
-    ]);
+    assert_eq!(
+        Material::Netherite.get_items(),
+        [
+            Item::NetheriteHelmet,
+            Item::NetheriteChestplate,
+            Item::NetheriteLeggings,
+            Item::NetheriteBoots,
+            Item::NetheriteSword,
+            Item::NetheritePickaxe,
+            Item::NetheriteAxe,
+            Item::NetheriteShovel,
+            Item::NetheriteHoe
+        ]
+    );
 }
 
 #[wasm_bindgen_test]
 fn manipulator() {
     let item = Item::NetheriteSword;
     let mut man = Manipulator::new(2893231007, 2635886329).expect("Wrong seeds");
-    let hex = vec!(0x2e, 0x3d, 0xf9, 0x6e, 0x1c, 0x9d);
+    let hex = vec![0x2e, 0x3d, 0xf9, 0x6e, 0x1c, 0x9d];
     assert_eq!(hex.len(), 6); // 6 bytes
     assert_eq!(man.player_seed().to_vec(), hex);
-    let enchs = [EnchantmentInstance::new(Enchantment::BaneOfArthropods, 5), 
-        EnchantmentInstance::new(Enchantment::FireAspect, 2), 
-        EnchantmentInstance::new(Enchantment::Knockback, -1)];
+    let enchs = [
+        EnchantmentInstance::new(Enchantment::BaneOfArthropods, 5),
+        EnchantmentInstance::new(Enchantment::FireAspect, 2),
+        EnchantmentInstance::new(Enchantment::Knockback, -1),
+    ];
     for ench in enchs.iter() {
         man.update_item(item, ench);
     }
-    let v = man.simulate(item, 15, 999, Version::V1_16).expect("Simulation Failed").to_vec();
+    let v = man
+        .simulate(item, 15, 999, Version::V1_16)
+        .expect("Simulation Failed")
+        .to_vec();
     assert_eq!(v, vec!(57, 3, 15));
 }
 

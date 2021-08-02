@@ -1,7 +1,7 @@
 use enum_map::Enum;
+use std::cmp;
 use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
-use std::cmp;
 
 #[wasm_bindgen]
 #[derive(Copy, Clone, PartialEq, PartialOrd)]
@@ -13,7 +13,7 @@ pub enum Version {
     V1_13,
     V1_14,
     V1_14_3,
-    V1_16
+    V1_16,
 }
 
 impl Version {
@@ -43,10 +43,10 @@ pub enum Material {
     Iron,
     Chainmail, //not for js
     Fire,
-    Turtle, //not for js
+    Turtle,  //not for js
     Leather, //not for js
     Stone,
-    Wooden
+    Wooden,
 }
 
 pub const SET_MATERIAL: usize = 9;
@@ -61,18 +61,23 @@ const SORT: &[SortFn; SET_MATERIAL] = &[
     &|x| x.is_pickaxe(),
     &|x| x.is_axe(),
     &|x| x.is_shovel(),
-    &|x| x.is_hoe()
+    &|x| x.is_hoe(),
 ];
 
 impl Material {
     pub fn get_items(&self) -> [Item; SET_MATERIAL] {
         let mut arr = [Item::Book; SET_MATERIAL];
-        for (item, out) in Item::iter().filter(|x| self.has_item(x, false)).zip(arr.iter_mut()) {
+        for (item, out) in Item::iter()
+            .filter(|x| self.has_item(x, false))
+            .zip(arr.iter_mut())
+        {
             *out = item;
         }
         for (i, func) in SORT.iter().enumerate() {
             for j in i..SET_MATERIAL {
-                if func(arr[j]) { arr.swap(i, j) }
+                if func(arr[j]) {
+                    arr.swap(i, j)
+                }
             }
         }
         arr
@@ -80,12 +85,21 @@ impl Material {
 
     pub fn has_item(&self, item: &Item, not_js: bool) -> bool {
         let name = item.as_ref();
-        if not_js { return name.starts_with(self.as_ref()); }
+        if not_js {
+            return name.starts_with(self.as_ref());
+        }
         match self {
-            Self::Fire => Self::Chainmail.has_item(item, true) || (Self::Iron.has_item(item, true) && (item.is_tool() || item.is_sword())),
-            Self::Stone => Self::Turtle.has_item(item, true) || (Self::Leather.has_item(item, true) && item.is_armor() && !item.is_helmet()) || name.starts_with(self.as_ref()),
+            Self::Fire => {
+                Self::Chainmail.has_item(item, true)
+                    || (Self::Iron.has_item(item, true) && (item.is_tool() || item.is_sword()))
+            }
+            Self::Stone => {
+                Self::Turtle.has_item(item, true)
+                    || (Self::Leather.has_item(item, true) && item.is_armor() && !item.is_helmet())
+                    || name.starts_with(self.as_ref())
+            }
             Self::Leather => Self::Wooden.has_item(item, true) || name.starts_with(self.as_ref()),
-            _ => name.starts_with(self.as_ref())
+            _ => name.starts_with(self.as_ref()),
         }
     }
 }
@@ -95,7 +109,7 @@ impl Introduced for Material {
         match self {
             Self::Netherite => Version::V1_16,
             Self::Turtle => Version::V1_13,
-            _ => Version::V1_8
+            _ => Version::V1_8,
         }
     }
 }
@@ -176,7 +190,7 @@ pub enum Item {
     NetheritePickaxe,
     NetheriteAxe,
     NetheriteShovel,
-    NetheriteHoe
+    NetheriteHoe,
 }
 
 impl Item {
@@ -191,7 +205,7 @@ impl Item {
     pub fn is_leggings(&self) -> bool {
         self.as_ref().ends_with("Leggings")
     }
-    
+
     pub fn is_boots(&self) -> bool {
         self.as_ref().ends_with("Boots")
     }
@@ -225,9 +239,21 @@ impl Item {
     }
 
     pub fn has_durability(&self) -> bool {
-        self.is_armor() || self.is_sword() || self.is_tool()
-        || [Item::Bow, Item::CarrotOnAStick, Item::Elytra, Item::FishingRod,
-        Item::FlintAndSteel, Item::Shears, Item::Shield, Item::Trident, Item::Crossbow].contains(self)
+        self.is_armor()
+            || self.is_sword()
+            || self.is_tool()
+            || [
+                Item::Bow,
+                Item::CarrotOnAStick,
+                Item::Elytra,
+                Item::FishingRod,
+                Item::FlintAndSteel,
+                Item::Shears,
+                Item::Shield,
+                Item::Trident,
+                Item::Crossbow,
+            ]
+            .contains(self)
     }
 
     pub fn get_enchantability(&self) -> i32 {
@@ -241,7 +267,7 @@ impl Item {
                     Material::Diamond => 10,
                     Material::Turtle => 9,
                     Material::Netherite => 15,
-                    _ => 0
+                    _ => 0,
                 };
             } else if self.is_sword() || self.is_tool() {
                 return match mat {
@@ -251,13 +277,13 @@ impl Item {
                     Material::Golden => 22,
                     Material::Diamond => 10,
                     Material::Netherite => 15,
-                    _ => 0
+                    _ => 0,
                 };
             }
         };
         match self {
             Item::Bow | Item::FishingRod | Item::Trident | Item::Crossbow | Item::Book => 1,
-            _ => 0
+            _ => 0,
         }
     }
 
@@ -269,13 +295,13 @@ impl Item {
 impl Introduced for Item {
     fn get_introduced_version(&self) -> Version {
         if let Some(mat) = self.get_material() {
-            return mat.get_introduced_version()
+            return mat.get_introduced_version();
         }
         match self {
             Item::Elytra | Item::Shield => Version::V1_9,
             Item::Trident => Version::V1_13,
             Item::Crossbow => Version::V1_14,
-            _ => Version::V1_8
+            _ => Version::V1_8,
         }
     }
 }
@@ -324,7 +350,7 @@ pub enum Enchantment {
     // 1.14
     Multishot,
     QuickCharge,
-    Piercing
+    Piercing,
 }
 
 type IncompatibilityFunc<'r> = &'r dyn Fn(Enchantment, Enchantment, Version) -> bool;
@@ -342,12 +368,30 @@ const INCOMPATIBLES: &[IncompatibilityFunc] = &[
     &|a, b, _x| a == Enchantment::Riptide && b == Enchantment::Loyalty,
     &|a, b, _x| a == Enchantment::Riptide && b == Enchantment::Channeling,
     &|a, b, _x| a == Enchantment::Multishot && b == Enchantment::Piercing,
-    &|a, b, x| x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::FireProtection,
-    &|a, b, x| x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::BlastProtection,
-    &|a, b, x| x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::ProjectileProtection,
-    &|a, b, x| x != Version::V1_14 && a == Enchantment::BlastProtection && b == Enchantment::FireProtection,
-    &|a, b, x| x != Version::V1_14 && a == Enchantment::BlastProtection && b == Enchantment::ProjectileProtection,
-    &|a, b, x| x != Version::V1_14 && a == Enchantment::FireProtection && b == Enchantment::ProjectileProtection
+    &|a, b, x| {
+        x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::FireProtection
+    },
+    &|a, b, x| {
+        x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::BlastProtection
+    },
+    &|a, b, x| {
+        x != Version::V1_14
+            && a == Enchantment::Protection
+            && b == Enchantment::ProjectileProtection
+    },
+    &|a, b, x| {
+        x != Version::V1_14 && a == Enchantment::BlastProtection && b == Enchantment::FireProtection
+    },
+    &|a, b, x| {
+        x != Version::V1_14
+            && a == Enchantment::BlastProtection
+            && b == Enchantment::ProjectileProtection
+    },
+    &|a, b, x| {
+        x != Version::V1_14
+            && a == Enchantment::FireProtection
+            && b == Enchantment::ProjectileProtection
+    },
 ];
 
 impl Enchantment {
@@ -367,44 +411,109 @@ impl Enchantment {
     }
 
     pub fn can_apply(&self, item: Item, primary: bool) -> bool {
-        if item == Item::Book { return true; }
+        if item == Item::Book {
+            return true;
+        }
         match self {
-            Enchantment::Protection | Enchantment::FireProtection | Enchantment::BlastProtection | Enchantment::ProjectileProtection => item.is_armor(),
-            Enchantment::Thorns => if primary { item.is_chestplate() } else { item.is_armor() },
-            Enchantment::FeatherFalling | Enchantment::DepthStrider | Enchantment::FrostWalker => item.is_boots(),
+            Enchantment::Protection
+            | Enchantment::FireProtection
+            | Enchantment::BlastProtection
+            | Enchantment::ProjectileProtection => item.is_armor(),
+            Enchantment::Thorns => {
+                if primary {
+                    item.is_chestplate()
+                } else {
+                    item.is_armor()
+                }
+            }
+            Enchantment::FeatherFalling | Enchantment::DepthStrider | Enchantment::FrostWalker => {
+                item.is_boots()
+            }
             Enchantment::Respiration | Enchantment::AquaAffinity => item.is_helmet(),
-            Enchantment::BindingCurse => item.is_armor() || [Item::Pumpkin, Item::Elytra, Item::Skull].iter().any(|x| *x == item),
-            Enchantment::Sharpness | Enchantment::Smite | Enchantment::BaneOfArthropods => item.is_sword() || (!primary && item.is_axe()),
-            Enchantment::Knockback | Enchantment::FireAspect | Enchantment::Looting | Enchantment::Sweeping => item.is_sword(),
+            Enchantment::BindingCurse => {
+                item.is_armor()
+                    || [Item::Pumpkin, Item::Elytra, Item::Skull]
+                        .iter()
+                        .any(|x| *x == item)
+            }
+            Enchantment::Sharpness | Enchantment::Smite | Enchantment::BaneOfArthropods => {
+                item.is_sword() || (!primary && item.is_axe())
+            }
+            Enchantment::Knockback
+            | Enchantment::FireAspect
+            | Enchantment::Looting
+            | Enchantment::Sweeping => item.is_sword(),
             Enchantment::Efficiency => item.is_tool() || (!primary && item == Item::Shears),
             Enchantment::SilkTouch | Enchantment::Fortune => item.is_tool(),
-            Enchantment::Power | Enchantment::Punch | Enchantment::Flame | Enchantment::Infinity => item == Item::Bow,
+            Enchantment::Power
+            | Enchantment::Punch
+            | Enchantment::Flame
+            | Enchantment::Infinity => item == Item::Bow,
             Enchantment::LuckOfTheSea | Enchantment::Lure => item == Item::FishingRod,
             Enchantment::Unbreaking | Enchantment::Mending => item.has_durability(),
-            Enchantment::VanishingCurse => item.has_durability() || item == Item::Pumpkin || item == Item::Skull,
-            Enchantment::Loyalty | Enchantment::Impaling | Enchantment::Riptide | Enchantment::Channeling => item == Item::Trident,
-            Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => item == Item::Crossbow,
+            Enchantment::VanishingCurse => {
+                item.has_durability() || item == Item::Pumpkin || item == Item::Skull
+            }
+            Enchantment::Loyalty
+            | Enchantment::Impaling
+            | Enchantment::Riptide
+            | Enchantment::Channeling => item == Item::Trident,
+            Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => {
+                item == Item::Crossbow
+            }
         }
     }
 
     pub fn is_treasure(&self) -> bool {
-        [Enchantment::FrostWalker, Enchantment::Mending,
-        Enchantment::BindingCurse, Enchantment::VanishingCurse].iter().any(|x| x == self)
+        [
+            Enchantment::FrostWalker,
+            Enchantment::Mending,
+            Enchantment::BindingCurse,
+            Enchantment::VanishingCurse,
+        ]
+        .iter()
+        .any(|x| x == self)
     }
 
     pub fn get_max_level(&self) -> i32 {
         match self {
-            Enchantment::Sharpness | Enchantment::Smite | Enchantment::BaneOfArthropods | Enchantment::Efficiency
-            | Enchantment::Power | Enchantment::Impaling => 5,
-            Enchantment::Protection | Enchantment::FireProtection | Enchantment::BlastProtection | Enchantment::ProjectileProtection
-            | Enchantment::FeatherFalling | Enchantment::Piercing => 4,
-            Enchantment::Thorns | Enchantment::DepthStrider | Enchantment::Respiration | Enchantment::Looting
-            | Enchantment::Sweeping | Enchantment::Fortune | Enchantment::LuckOfTheSea | Enchantment::Lure
-            | Enchantment::Unbreaking | Enchantment::Loyalty | Enchantment::Riptide | Enchantment::QuickCharge => 3,
-            Enchantment::FrostWalker | Enchantment::Knockback | Enchantment::FireAspect | Enchantment::Punch => 2,
-            Enchantment::AquaAffinity | Enchantment::BindingCurse | Enchantment::SilkTouch | Enchantment::Flame
-            | Enchantment::Infinity | Enchantment::Mending | Enchantment::VanishingCurse | Enchantment::Channeling
-            | Enchantment::Multishot => 1
+            Enchantment::Sharpness
+            | Enchantment::Smite
+            | Enchantment::BaneOfArthropods
+            | Enchantment::Efficiency
+            | Enchantment::Power
+            | Enchantment::Impaling => 5,
+            Enchantment::Protection
+            | Enchantment::FireProtection
+            | Enchantment::BlastProtection
+            | Enchantment::ProjectileProtection
+            | Enchantment::FeatherFalling
+            | Enchantment::Piercing => 4,
+            Enchantment::Thorns
+            | Enchantment::DepthStrider
+            | Enchantment::Respiration
+            | Enchantment::Looting
+            | Enchantment::Sweeping
+            | Enchantment::Fortune
+            | Enchantment::LuckOfTheSea
+            | Enchantment::Lure
+            | Enchantment::Unbreaking
+            | Enchantment::Loyalty
+            | Enchantment::Riptide
+            | Enchantment::QuickCharge => 3,
+            Enchantment::FrostWalker
+            | Enchantment::Knockback
+            | Enchantment::FireAspect
+            | Enchantment::Punch => 2,
+            Enchantment::AquaAffinity
+            | Enchantment::BindingCurse
+            | Enchantment::SilkTouch
+            | Enchantment::Flame
+            | Enchantment::Infinity
+            | Enchantment::Mending
+            | Enchantment::VanishingCurse
+            | Enchantment::Channeling
+            | Enchantment::Multishot => 1,
         }
     }
 
@@ -446,7 +555,7 @@ impl Enchantment {
             Enchantment::Channeling => 25,
             Enchantment::Multishot => 20,
             Enchantment::QuickCharge => 12 + (level - 1) * 20,
-            Enchantment::Piercing => 1 + (level - 1) * 10
+            Enchantment::Piercing => 1 + (level - 1) * 10,
         }
     }
 
@@ -488,23 +597,67 @@ impl Enchantment {
             Enchantment::Channeling => 50,
             Enchantment::Multishot => 50,
             Enchantment::QuickCharge => 50,
-            Enchantment::Piercing => 50
+            Enchantment::Piercing => 50,
         }
     }
 
     pub fn get_weight(&self, version: Version) -> i32 {
         match self {
-            Enchantment::Protection | Enchantment::Sharpness | Enchantment::Efficiency | Enchantment::Power
-            | Enchantment::Piercing => if version == Version::V1_14 { 30 } else { 10 },
-            Enchantment::FireProtection | Enchantment::FeatherFalling | Enchantment::ProjectileProtection
-            | Enchantment::Smite | Enchantment::BaneOfArthropods | Enchantment::Knockback | Enchantment::Unbreaking
-            | Enchantment::Loyalty | Enchantment::QuickCharge => if version == Version::V1_14 { 10 } else { 5 },
-            Enchantment::BlastProtection | Enchantment::Respiration | Enchantment::AquaAffinity | Enchantment::DepthStrider
-            | Enchantment::FrostWalker | Enchantment::FireAspect | Enchantment::Looting | Enchantment::Sweeping | Enchantment::Fortune 
-            | Enchantment::Punch | Enchantment::Flame | Enchantment::LuckOfTheSea | Enchantment::Lure | Enchantment::Mending | Enchantment::Impaling 
-            | Enchantment::Riptide | Enchantment::Multishot => if version == Version::V1_14 { 3 } else { 2 },
-            Enchantment::Thorns | Enchantment::BindingCurse | Enchantment::SilkTouch | Enchantment::Infinity
-            | Enchantment::VanishingCurse | Enchantment::Channeling => 1
+            Enchantment::Protection
+            | Enchantment::Sharpness
+            | Enchantment::Efficiency
+            | Enchantment::Power
+            | Enchantment::Piercing => {
+                if version == Version::V1_14 {
+                    30
+                } else {
+                    10
+                }
+            }
+            Enchantment::FireProtection
+            | Enchantment::FeatherFalling
+            | Enchantment::ProjectileProtection
+            | Enchantment::Smite
+            | Enchantment::BaneOfArthropods
+            | Enchantment::Knockback
+            | Enchantment::Unbreaking
+            | Enchantment::Loyalty
+            | Enchantment::QuickCharge => {
+                if version == Version::V1_14 {
+                    10
+                } else {
+                    5
+                }
+            }
+            Enchantment::BlastProtection
+            | Enchantment::Respiration
+            | Enchantment::AquaAffinity
+            | Enchantment::DepthStrider
+            | Enchantment::FrostWalker
+            | Enchantment::FireAspect
+            | Enchantment::Looting
+            | Enchantment::Sweeping
+            | Enchantment::Fortune
+            | Enchantment::Punch
+            | Enchantment::Flame
+            | Enchantment::LuckOfTheSea
+            | Enchantment::Lure
+            | Enchantment::Mending
+            | Enchantment::Impaling
+            | Enchantment::Riptide
+            | Enchantment::Multishot => {
+                if version == Version::V1_14 {
+                    3
+                } else {
+                    2
+                }
+            }
+            Enchantment::Thorns
+            | Enchantment::BindingCurse
+            | Enchantment::SilkTouch
+            | Enchantment::Infinity
+            | Enchantment::VanishingCurse
+            | Enchantment::Channeling => 1,
         }
     }
 
@@ -513,7 +666,7 @@ impl Enchantment {
         if enchantability == 0 || self.is_treasure() || !self.can_apply(item, true) {
             return 0;
         }
-        let mut level = 30 + 1 + enchantability/4 + enchantability/4;
+        let mut level = 30 + 1 + enchantability / 4 + enchantability / 4;
         level += ((level as f32) * 0.15).round() as i32;
         for max_level in (1..=self.get_max_level()).rev() {
             if level >= self.get_min_enchantability(max_level) {
@@ -524,25 +677,38 @@ impl Enchantment {
     }
 
     pub fn is_compatible_with(&self, ench: Enchantment, version: Version) -> bool {
-        !INCOMPATIBLES.iter().any(|func| func(*self, ench, version) || func(ench, *self, version) )
+        !INCOMPATIBLES
+            .iter()
+            .any(|func| func(*self, ench, version) || func(ench, *self, version))
     }
 
-    pub fn calc_enchantment_table_level(rand: &mut java_rand::Random, slot: i32, bookshelves: i32, item: Item) -> i32 {
+    pub fn calc_enchantment_table_level(
+        rand: &mut java_rand::Random,
+        slot: i32,
+        bookshelves: i32,
+        item: Item,
+    ) -> i32 {
         if item.get_enchantability() == 0 {
             return 0;
         }
-        let level = rand.next_i32_bound(8) + 1 + (bookshelves >> 1) + rand.next_i32_bound(bookshelves + 1);
+        let level =
+            rand.next_i32_bound(8) + 1 + (bookshelves >> 1) + rand.next_i32_bound(bookshelves + 1);
         match slot {
             0 => cmp::max(level / 3, 1),
             1 => level * 2 / 3 + 1,
             2 => cmp::max(level, bookshelves * 2),
-            _ => panic!("More than 3 enchantment slots?")
+            _ => panic!("More than 3 enchantment slots?"),
         }
     }
 
-    pub fn get_highest_allowed_enchantments(level: i32, item: Item, treasure: bool, version: Version) -> Vec<EnchantmentInstance> {
+    pub fn get_highest_allowed_enchantments(
+        level: i32,
+        item: Item,
+        treasure: bool,
+        version: Version,
+    ) -> Vec<EnchantmentInstance> {
         let mut allowed_enchs = Vec::new();
-        
+
         if version.before(item.get_introduced_version()) {
             return allowed_enchs;
         }
@@ -554,7 +720,9 @@ impl Enchantment {
 
             if (treasure || !ench.is_treasure()) && ench.can_apply(item, true) {
                 for ench_lvl in (1..=ench.get_max_level()).rev() {
-                    if level >= ench.get_min_enchantability(ench_lvl) && level <= ench.get_max_enchantability(ench_lvl) {
+                    if level >= ench.get_min_enchantability(ench_lvl)
+                        && level <= ench.get_max_enchantability(ench_lvl)
+                    {
                         allowed_enchs.push(EnchantmentInstance::new(ench, ench_lvl));
                         break;
                     }
@@ -564,7 +732,13 @@ impl Enchantment {
         allowed_enchs
     }
 
-    pub fn add_random_enchantments(rand: &mut java_rand::Random, item: Item, level: i32, treasure: bool, version: Version) -> Vec<EnchantmentInstance> {
+    pub fn add_random_enchantments(
+        rand: &mut java_rand::Random,
+        item: Item,
+        level: i32,
+        treasure: bool,
+        version: Version,
+    ) -> Vec<EnchantmentInstance> {
         let enchantability = item.get_enchantability();
         let mut level = level;
         let mut enchs = Vec::new();
@@ -572,26 +746,32 @@ impl Enchantment {
             return enchs;
         }
 
-        level += 1 + rand.next_i32_bound(enchantability/4 + 1) + rand.next_i32_bound(enchantability/4 + 1);
+        level += 1
+            + rand.next_i32_bound(enchantability / 4 + 1)
+            + rand.next_i32_bound(enchantability / 4 + 1);
         let percent_change: f32 = (rand.next_f32() + rand.next_f32() - 1f32) * 0.15;
         level += (level as f32 * percent_change).round() as i32;
         if level < 1 {
             level = 1;
         }
 
-        let mut allowed_enchs = Self::get_highest_allowed_enchantments(level, item, treasure, version);
+        let mut allowed_enchs =
+            Self::get_highest_allowed_enchantments(level, item, treasure, version);
         if allowed_enchs.is_empty() {
             return enchs;
         }
 
-        if let Some(ench) = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version)) {
+        if let Some(ench) = Self::weighted_random(rand, &mut allowed_enchs, &|x| {
+            x.enchantment.get_weight(version)
+        }) {
             enchs.push(ench)
         }
 
         while rand.next_i32_bound(50) <= level {
             if version == Version::V1_14 {
                 level = level * 4 / 5 + 1;
-                allowed_enchs = Self::get_highest_allowed_enchantments(level, item, treasure, version);
+                allowed_enchs =
+                    Self::get_highest_allowed_enchantments(level, item, treasure, version);
             }
 
             for ench in enchs.iter() {
@@ -603,7 +783,9 @@ impl Enchantment {
                 break;
             }
 
-            if let Some(ench) = Self::weighted_random(rand, &mut allowed_enchs, &|x| x.enchantment.get_weight(version)) {
+            if let Some(ench) = Self::weighted_random(rand, &mut allowed_enchs, &|x| {
+                x.enchantment.get_weight(version)
+            }) {
                 enchs.push(ench)
             }
 
@@ -612,7 +794,14 @@ impl Enchantment {
         enchs
     }
 
-    pub fn get_enchantments_in_table(rand: &mut java_rand::Random, xp_seed: i32, item: Item, slot: i32, levels: i32, version: Version) -> Vec<EnchantmentInstance> {
+    pub fn get_enchantments_in_table(
+        rand: &mut java_rand::Random,
+        xp_seed: i32,
+        item: Item,
+        slot: i32,
+        levels: i32,
+        version: Version,
+    ) -> Vec<EnchantmentInstance> {
         rand.set_seed(xp_seed as u64 + slot as u64);
         let mut v = Self::add_random_enchantments(rand, item, levels, false, version);
         if Item::Book == item && v.len() > 1 {
@@ -621,7 +810,11 @@ impl Enchantment {
         v
     }
 
-    fn weighted_random<T>(rand: &mut java_rand::Random, v: &mut Vec<T>, weight_extractor: &dyn Fn(&T) -> i32) -> Option<T> {
+    fn weighted_random<T>(
+        rand: &mut java_rand::Random,
+        v: &mut Vec<T>,
+        weight_extractor: &dyn Fn(&T) -> i32,
+    ) -> Option<T> {
         let mut weight = v.iter().map(|x| weight_extractor(x)).sum();
         if weight <= 0 {
             return None;
@@ -643,9 +836,14 @@ impl Introduced for Enchantment {
             Enchantment::FrostWalker | Enchantment::Mending => Version::V1_9,
             Enchantment::BindingCurse | Enchantment::VanishingCurse => Version::V1_11,
             Enchantment::Sweeping => Version::V1_11_1,
-            Enchantment::Loyalty | Enchantment::Impaling | Enchantment::Riptide | Enchantment::Channeling => Version::V1_13,
-            Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => Version::V1_14,
-            _ => Version::V1_8
+            Enchantment::Loyalty
+            | Enchantment::Impaling
+            | Enchantment::Riptide
+            | Enchantment::Channeling => Version::V1_13,
+            Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => {
+                Version::V1_14
+            }
+            _ => Version::V1_8,
         }
     }
 }
@@ -654,15 +852,13 @@ impl Introduced for Enchantment {
 #[derive(PartialEq, Clone)]
 pub struct EnchantmentInstance {
     pub enchantment: Enchantment,
-    pub level: i32
+    pub level: i32,
 }
 
 #[wasm_bindgen]
 impl EnchantmentInstance {
     #[wasm_bindgen(constructor)]
     pub fn new(enchantment: Enchantment, level: i32) -> Self {
-        EnchantmentInstance {
-            enchantment, level
-        }
+        EnchantmentInstance { enchantment, level }
     }
 }
