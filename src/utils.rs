@@ -1,5 +1,9 @@
 use std::cmp;
 use std::num::Wrapping;
+#[cfg(target_feature="simd128")]
+use wide::*;
+#[cfg(target_feature="simd128")]
+use bytemuck::*;
 
 const MULT: i64 = 0x5DEECE66D;
 const MASK: i64 = (1 << 48) - 1;
@@ -70,5 +74,60 @@ impl SimpleRandom {
         self.levels_slot1(shelves) == slot1
             && self.levels_slot2(shelves) == slot2
             && self.levels_slot3(shelves) == slot3
+    }
+}
+
+#[cfg(target_feature="simd128")]
+#[derive(Default)]
+pub struct SIMDSimpleRandom {
+    pub seeds: wide::i64x4
+}
+
+#[cfg(target_feature="simd128")]
+impl SIMDSimpleRandom {
+    pub fn set_seed(&mut self, seeds: i64x4) {
+        self.seeds = (seeds ^ i64x4::from(MULT)) & i64x4::from(MASK);
+    }
+
+    pub fn next_int(&mut self) -> i32x4 {
+        self.seeds = (self.seeds * MULT + 0xB) & i64x4::from(MASK);
+        let unsigned: u64x4 = cast(self.seeds);
+        cast(unsigned >> 17)
+    }
+
+    pub fn next_int_bound(&mut self, bound: i32x4) -> i32x4 {
+        let mut r: [i32; 4] = cast(self.next_int());
+        let m = bound - 1;
+        let bslice: [i32; 4] = cast(bound);
+        let mslice: [i32; 4] = cast(m);
+        let results: [i32; 4] = cast((bound & m).cmp_eq(i32x4::from(0)));
+        for i in 0..4 {
+            if results[i] == i32::MAX {
+                r[i] = ((bslice[i] as i64 * r[i] as i64) >> 31) as i32;
+            } else {
+                let mut u = r[i];
+                while {
+                    r[i] = u % bslice[i];
+                    u - r[i] + mslice[i]
+                } < 0
+                {
+                    u 
+                }
+            }
+        }
+        /*if (bound & m) == Wrapping(0) {
+            r = Wrapping(((bound.0 as i64 * r.0 as i64) >> 31) as i32);
+        } else {
+            let mut u = r;
+            while {
+                r = u % bound;
+                u - r + m
+            }
+            .0 < 0
+            {
+                u = Wrapping(self.next_int());
+            }
+        }*/
+        cast(r)
     }
 }
