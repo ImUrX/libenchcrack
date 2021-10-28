@@ -6,12 +6,12 @@ use std::num::Wrapping;
 const MULT: i64 = 0x5DEECE66D;
 #[cfg(target_feature="simd128")]
 #[allow(non_upper_case_globals)]
-const MULTx2: v128 = i64x2_splat(MULT);
+const MULTx2: v128 = i64x2(MULT, MULT);
 
 const MASK: i64 = (1 << 48) - 1;
 #[cfg(target_feature="simd128")]
 #[allow(non_upper_case_globals)]
-const MASKx2: v128 = i64x2_splat(MASK);
+const MASKx2: v128 = i64x2(MASK, MASK);
 
 #[derive(Default)]
 pub struct SimpleRandom {
@@ -160,7 +160,7 @@ impl SIMDSimpleRandom {
         let m = i32x4_splat(m_num);
         let boundf = f32x4_convert_i32x4(bound);
         let mut u = r;
-        let mut flags = [false, false, false, false];
+        let mut flags = [false; 4];
         loop {
             r = i32x4_sub(u, i32x4_mul(i32x4_trunc_sat_f32x4(f32x4_div(f32x4_convert_i32x4(u), boundf)), bound));
             let comp = i32x4_lt(i32x4_add(i32x4_sub(u, r), m), i32x4_splat(0));
@@ -194,6 +194,20 @@ impl SIMDSimpleRandom {
         r
     }
 
+    // ported from https://github.com/vectorclass/version2/blob/v2.01.04/vectori128.h#L6534
+    fn divide_by_3(num: v128) -> v128 {
+        let mul = i32x4_splat(-1431655765);
+        //let s1 = i32x4(1, 0, 0, 0);
+        let t1 = i64x2_extmul_low_i32x4(num, mul);
+        let t2 = u64x2_shr(t1, 32);
+        let t4 = i64x2_extmul_high_i32x4(num, mul);
+        let t7 = v128_bitselect(t2, t4, i16x8_splat(0xCC));
+        let t8 = i32x4_add(t7, num);
+        let t9 = i32x4_replace_lane::<0>(t8, i32x4_extract_lane::<0>(t8) >> 1);
+        let t10 = i32x4_shr(num, 31);
+        i32x4_sub(t9, t10)
+    }
+
     fn generic_enchantibility(&mut self, shelves: i32) -> v128 {
         let first = self.next_int_bound(8);
         let second = self.next_int_bound(shelves + 1);
@@ -201,23 +215,54 @@ impl SIMDSimpleRandom {
         i32x4_add(i32x4_add(first, i32x4_splat(1)), i32x4_add(i32x4_splat(shelves >> 1), second))
     }
 
-    /*fn levels_slot1(&mut self, shelves: i32) -> v128 {
-        //let slot1 = self.generic_enchantibility(shelves) / 3;
-        let slot1 = 
+    fn levels_slot1(&mut self, shelves: i32) -> v128 {
+        /*let slot1 = self.generic_enchantibility(shelves) / 3;
         if slot1 < 1 {
             1
         } else {
             slot1
+        }*/
+        let slot1 = SIMDSimpleRandom::divide_by_3(self.generic_enchantibility(shelves));
+        v128_bitselect(slot1, i32x4_splat(1), i32x4_lt(slot1, i32x4_splat(1)))
+    }
+
+    fn levels_slot2(&mut self, shelves: i32) -> v128 {
+        //(self.generic_enchantibility(shelves) * 2 / 3) + 1
+        i32x4_add(SIMDSimpleRandom::divide_by_3(i32x4_mul(self.generic_enchantibility(shelves), i32x4_splat(2))), i32x4_splat(1))
+    }
+
+    fn levels_slot3(&mut self, shelves: i32) -> v128 {
+        //cmp::max(self.generic_enchantibility(shelves), shelves * 2)
+        i32x4_max(self.generic_enchantibility(shelves), i32x4_splat(shelves * 2))
+    }
+
+    pub fn verify_seed(
+        &mut self,
+        seed: v128,
+        (shelves, slot1, slot2, slot3): (i32, i32, i32, i32),
+    ) -> [bool; 4] {
+        let mut res = [true; 4];
+        self.set_seed([i64x2_extend_low_i32x4(seed), i64x2_extend_high_i32x4(seed)]);
+        let slot1_calc = i32x4_eq(self.levels_slot1(shelves), i32x4_splat(slot1));
+        if !i32x4_all_true(slot1_calc) {
+            for i in 0..4 {
+                res[i] = get_i32(slot1_calc, i) != 0;
+            }
         }
+        let slot2_calc = i32x4_eq(self.levels_slot2(shelves), i32x4_splat(slot2));
+        if !i32x4_all_true(slot2_calc) {
+            for i in 0..4 {
+                res[i] = get_i32(slot2_calc, i) != 0;
+            }
+        }
+        let slot3_calc = i32x4_eq(self.levels_slot3(shelves), i32x4_splat(slot3));
+        if !i32x4_all_true(slot3_calc) {
+            for i in 0..4 {
+                res[i] = get_i32(slot3_calc, i) != 0;
+            }
+        }
+        res
     }
-
-    fn levels_slot2(&mut self, shelves: i32) -> i32 {
-        (self.generic_enchantibility(shelves) * 2 / 3) + 1
-    }
-
-    fn levels_slot3(&mut self, shelves: i32) -> i32 {
-        cmp::max(self.generic_enchantibility(shelves), shelves * 2)
-    }*/
 }
 
 #[cfg(target_feature="simd128")]
