@@ -1,7 +1,7 @@
 [package]
 name = "libenchcrack"
 description = "Code for cracking minecraft's XP seed"
-version = "0.2.0"
+version = "1.0.0"
 authors = ["ImUrX <urielfontan2002@gmail.com>"]
 repository = "https://github.com/ImUrX/libenchcrack"
 edition = "2018"
@@ -20,10 +20,6 @@ strum = "0.21.0"
 strum_macros = "0.21.1"
 rayon = { version = "1.5.1", optional = true }
 wasm-bindgen-rayon = { version = "1.0.3", optional = true, features = ["no-bundler"] }
-
-[target.'cfg(target_feature = "simd128")'.dependencies]
-wide = { git = "https://github.com/Lokathor/wide"}
-bytemuck = { version = "1.7.2" }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.25"

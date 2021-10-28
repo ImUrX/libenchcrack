@@ -17,12 +17,14 @@ use std::ops::Range;
 #[cfg(feature = "threads")]
 use rayon::prelude::*;
 
+#[cfg(target_arch = "wasm32")]
 #[cfg(not(feature = "threads"))]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 const PREALLOC_SIZE: usize = 80e6 as usize;
 
+#[cfg(target_arch = "wasm32")]
 #[cfg(feature = "threads")]
 pub use wasm_bindgen_rayon::init_thread_pool;
 
@@ -180,13 +182,10 @@ pub struct Manipulator {
 impl Manipulator {
     #[wasm_bindgen(constructor)]
     pub fn new(seed1: u32, seed2: u32) -> Option<Manipulator> {
-        match Self::calculate_seed(seed1, seed2) {
-            Some(player_seed) => Some(Self {
-                player_seed,
-                items: Default::default(),
-            }),
-            None => None,
-        }
+        Self::calculate_seed(seed1, seed2).map(|player_seed| Self {
+            player_seed,
+            items: Default::default()
+        })
     }
 
     fn calculate_seed(seed1: u32, seed2: u32) -> Option<u64> {
@@ -215,13 +214,9 @@ impl Manipulator {
     }
 
     #[wasm_bindgen(getter = playerSeed)]
-    pub fn player_seed(&self) -> js_sys::Uint8Array {
-        let array = js_sys::Uint8Array::new_with_length(6);
-        let bytes = self.player_seed.to_le_bytes();
-        for i in (0..array.length()).rev() {
-            array.set_index(i, bytes[i as usize]);
-        }
-        array
+    pub fn player_seed(&self) -> Box<[u8]> {
+        let bytes: [u8; 8] = self.player_seed.to_le_bytes();
+        bytes[0..6].into()
     }
 
     #[wasm_bindgen]
@@ -231,9 +226,8 @@ impl Manipulator {
         max_shelves: i32,
         player_level: i32,
         version: Version,
-    ) -> Option<js_sys::Int32Array> {
+    ) -> Option<Box<[i32]>> {
         let mut seed = self.player_seed;
-        let array = js_sys::Int32Array::new_with_length(3);
         if self.items[item].enchantments.is_empty() {
             return None;
         }
@@ -352,10 +346,7 @@ impl Manipulator {
             }
         }
 
-        array.set_index(0, times_needed);
-        array.set_index(1, slot + 1);
-        array.set_index(2, bookshelves_needed);
-        Some(array)
+        Some([times_needed, slot + 1, bookshelves_needed].into())
     }
 
     #[wasm_bindgen(js_name = updateSeed)]
