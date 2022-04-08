@@ -27,7 +27,7 @@ web-sys = { version = "0.3.52", features = ["console"] }
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
-opt-level = "s"
+opt-level = 3
 lto = true
 
 [features]
