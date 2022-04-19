@@ -17,15 +17,15 @@ use std::ops::Range;
 #[cfg(feature = "threads")]
 use rayon::prelude::*;
 
-#[cfg(target_arch = "wasm32")]
-#[cfg(not(feature = "threads"))]
-#[global_allocator]
+#[cfg_attr(
+    all(target_arch = "wasm32", not(feature = "threads")),
+    global_allocator
+)]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 const PREALLOC_SIZE: usize = 80e6 as usize;
 
-#[cfg(target_arch = "wasm32")]
-#[cfg(feature = "threads")]
+#[cfg(all(target_arch = "wasm32", feature = "threads"))]
 pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen]
@@ -92,7 +92,7 @@ impl Cracker {
 
     #[cfg(feature = "threads")]
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
+    pub fn new(_thread_id: usize, _threads: usize) -> Self {
         Cracker {
             possible_seeds: Vec::with_capacity(PREALLOC_SIZE),
             rng: Default::default(),
