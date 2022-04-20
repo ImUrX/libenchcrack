@@ -18,14 +18,14 @@ use std::ops::Range;
 use rayon::prelude::*;
 
 #[cfg_attr(
-    all(target_arch = "wasm32", not(feature = "threads")),
+    all(target_family = "wasm", not(feature = "threads")),
     global_allocator
 )]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 const PREALLOC_SIZE: usize = 80e6 as usize;
 
-#[cfg(all(target_arch = "wasm32", feature = "threads"))]
+#[cfg(all(target_family = "wasm", feature = "threads"))]
 pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen]

@@ -82,6 +82,7 @@ impl SimpleRandom {
     }
 }
 
+/*
 #[cfg(target_feature = "simd128")]
 pub struct SIMDSimpleRandom {
     pub seeds: [v128; 2], //supposedly 2 i64x2
@@ -310,4 +311,4 @@ fn get_i32(vec: v128, index: usize) -> i32 {
         3 => i32x4_extract_lane::<3>(vec),
         _ => panic!("The total size is 4!"),
     }
-}
+}*/
