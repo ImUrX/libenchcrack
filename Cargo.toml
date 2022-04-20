@@ -1,7 +1,7 @@
 [package]
 name = "libenchcrack"
 description = "Code for cracking minecraft's XP seed"
-version = "0.2.0"
+version = "1.0.0"
 authors = ["ImUrX <urielfontan2002@gmail.com>"]
 repository = "https://github.com/ImUrX/libenchcrack"
 edition = "2021"
@@ -11,19 +11,20 @@ license = "MIT"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.75"
+wasm-bindgen = "0.2.80"
 wee_alloc = "0.4.5"
-js-sys = "0.3.52"
+js-sys = "0.3.57"
 java-rand = "0.2.0"
-enum-map = "0.6.4"
-strum = "0.21.0"
-strum_macros = "0.21.1"
-rayon = { version = "1.5.1", optional = true }
-wasm-bindgen-rayon = { version = "1.0.3", optional = true, features = ["no-bundler"] }
+enum-map = "2.1.0"
+strum = "0.24"
+strum_macros = "0.24"
+rayon = { version = "1.5", optional = true }
+wasm-bindgen-rayon = { version = "1.0", optional = true, features = ["no-bundler"] }
+atomic-counter = { version = "1.0.1", optional = true }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.25"
-web-sys = { version = "0.3.52", features = ["console"] }
+wasm-bindgen-test = "0.3.30"
+web-sys = { version = "0.3.57", features = ["console"] }
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
@@ -31,4 +32,4 @@ opt-level = 3
 lto = true
 
 [features]
-threads = ["rayon", "wasm-bindgen-rayon"]
+threads = ["rayon", "wasm-bindgen-rayon", "atomic-counter"]

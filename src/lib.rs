@@ -17,12 +17,15 @@ use std::ops::Range;
 #[cfg(feature = "threads")]
 use rayon::prelude::*;
 
-#[global_allocator]
+#[cfg_attr(
+    all(target_family = "wasm", not(feature = "threads")),
+    global_allocator
+)]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 const PREALLOC_SIZE: usize = 80e6 as usize;
 
-#[cfg(feature = "threads")]
+#[cfg(all(target_family = "wasm", feature = "threads"))]
 pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen]
@@ -52,6 +55,26 @@ impl From<EnchantmentTableInfo> for (i32, i32, i32, i32) {
         (x.shelves, x.slot1, x.slot2, x.slot3)
     }
 }
+
+/*pub trait Cracker {
+    // Resets state of cracker
+    fn reset(&self);
+
+    // Current amount of possible remaining seeds
+    fn possible_seeds(&self) -> usize;
+
+    // Returns first seed (used when remaining seeds is 1 usually)
+    fn seed(&self) -> i32;
+
+    // First input accepts two table infos so it uses less memory
+    fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo);
+
+    // Compare enchantment table info to current seeds and filters which ones are not
+    fn add_input(&mut self, info: EnchantmentTableInfo);
+
+    // Returns if the cracker contains such seed
+    fn contains(&self, x: i32) -> bool;
+}*/
 
 #[wasm_bindgen]
 pub struct Cracker {
@@ -89,10 +112,11 @@ impl Cracker {
 
     #[cfg(feature = "threads")]
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
+    pub fn new(_thread_id: usize, _threads: usize) -> Self {
         Cracker {
             possible_seeds: Vec::with_capacity(PREALLOC_SIZE),
             rng: Default::default(),
+            counter: atomic_counter
         }
     }
 
@@ -179,13 +203,10 @@ pub struct Manipulator {
 impl Manipulator {
     #[wasm_bindgen(constructor)]
     pub fn new(seed1: u32, seed2: u32) -> Option<Manipulator> {
-        match Self::calculate_seed(seed1, seed2) {
-            Some(player_seed) => Some(Self {
-                player_seed,
-                items: Default::default(),
-            }),
-            None => None,
-        }
+        Self::calculate_seed(seed1, seed2).map(|player_seed| Self {
+            player_seed,
+            items: Default::default(),
+        })
     }
 
     fn calculate_seed(seed1: u32, seed2: u32) -> Option<u64> {
@@ -214,13 +235,9 @@ impl Manipulator {
     }
 
     #[wasm_bindgen(getter = playerSeed)]
-    pub fn player_seed(&self) -> js_sys::Uint8Array {
-        let array = js_sys::Uint8Array::new_with_length(6);
-        let bytes = self.player_seed.to_le_bytes();
-        for i in (0..array.length()).rev() {
-            array.set_index(i, bytes[i as usize]);
-        }
-        array
+    pub fn player_seed(&self) -> Box<[u8]> {
+        let bytes: [u8; 8] = self.player_seed.to_le_bytes();
+        bytes[0..6].into()
     }
 
     #[wasm_bindgen]
@@ -230,9 +247,8 @@ impl Manipulator {
         max_shelves: i32,
         player_level: i32,
         version: Version,
-    ) -> Option<js_sys::Int32Array> {
+    ) -> Option<Box<[i32]>> {
         let mut seed = self.player_seed;
-        let array = js_sys::Int32Array::new_with_length(3);
         if self.items[item].enchantments.is_empty() {
             return None;
         }
@@ -351,10 +367,7 @@ impl Manipulator {
             }
         }
 
-        array.set_index(0, times_needed);
-        array.set_index(1, slot + 1);
-        array.set_index(2, bookshelves_needed);
-        Some(array)
+        Some([times_needed, slot + 1, bookshelves_needed].into())
     }
 
     #[wasm_bindgen(js_name = updateSeed)]
