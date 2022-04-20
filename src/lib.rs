@@ -56,6 +56,26 @@ impl From<EnchantmentTableInfo> for (i32, i32, i32, i32) {
     }
 }
 
+/*pub trait Cracker {
+    // Resets state of cracker
+    fn reset(&self);
+
+    // Current amount of possible remaining seeds
+    fn possible_seeds(&self) -> usize;
+
+    // Returns first seed (used when remaining seeds is 1 usually)
+    fn seed(&self) -> i32;
+
+    // First input accepts two table infos so it uses less memory
+    fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo);
+
+    // Compare enchantment table info to current seeds and filters which ones are not
+    fn add_input(&mut self, info: EnchantmentTableInfo);
+
+    // Returns if the cracker contains such seed
+    fn contains(&self, x: i32) -> bool;
+}*/
+
 #[wasm_bindgen]
 pub struct Cracker {
     possible_seeds: Vec<i32>,
@@ -96,6 +116,7 @@ impl Cracker {
         Cracker {
             possible_seeds: Vec::with_capacity(PREALLOC_SIZE),
             rng: Default::default(),
+            counter: atomic_counter
         }
     }
 
