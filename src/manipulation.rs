@@ -431,10 +431,7 @@ impl Enchantment {
             }
             Enchantment::Respiration | Enchantment::AquaAffinity => item.is_helmet(),
             Enchantment::BindingCurse => {
-                item.is_armor()
-                    || [Item::Pumpkin, Item::Elytra, Item::Skull]
-                        .iter()
-                        .any(|x| *x == item)
+                item.is_armor() || [Item::Pumpkin, Item::Elytra, Item::Skull].contains(&item)
             }
             Enchantment::Sharpness | Enchantment::Smite | Enchantment::BaneOfArthropods => {
                 item.is_sword() || (!primary && item.is_axe())
@@ -815,7 +812,7 @@ impl Enchantment {
         v: &mut Vec<T>,
         weight_extractor: &dyn Fn(&T) -> i32,
     ) -> Option<T> {
-        let mut weight = v.iter().map(|x| weight_extractor(x)).sum();
+        let mut weight = v.iter().map(weight_extractor).sum();
         if weight <= 0 {
             return None;
         }

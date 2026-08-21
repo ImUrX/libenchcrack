@@ -17,9 +17,6 @@ use std::ops::Range;
 #[cfg(feature = "threads")]
 use rayon::prelude::*;
 
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 const PREALLOC_SIZE: usize = 80e6 as usize;
 
 #[cfg(feature = "threads")]
@@ -146,7 +143,7 @@ impl Cracker {
     }
 
     pub fn contains(&self, x: i32) -> bool {
-        self.possible_seeds.iter().any(|&y| x == y)
+        self.possible_seeds.contains(&x)
     }
 }
 
@@ -179,13 +176,10 @@ pub struct Manipulator {
 impl Manipulator {
     #[wasm_bindgen(constructor)]
     pub fn new(seed1: u32, seed2: u32) -> Option<Manipulator> {
-        match Self::calculate_seed(seed1, seed2) {
-            Some(player_seed) => Some(Self {
-                player_seed,
-                items: Default::default(),
-            }),
-            None => None,
-        }
+        Self::calculate_seed(seed1, seed2).map(|player_seed| Self {
+            player_seed,
+            items: Default::default(),
+        })
     }
 
     fn calculate_seed(seed1: u32, seed2: u32) -> Option<u64> {

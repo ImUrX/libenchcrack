@@ -22,7 +22,7 @@ impl SimpleRandom {
     pub fn next_int_bound(&mut self, bound: Wrapping<i32>) -> i32 {
         let mut r = Wrapping(self.next_int());
         let m = bound - Wrapping(1);
-        if (bound & m) == Wrapping(0) {
+        if (bound & m).0 == 0 {
             r = Wrapping(((bound.0 as i64 * r.0 as i64) >> 31) as i32);
         } else {
             let mut u = r;
