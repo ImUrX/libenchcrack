@@ -46,11 +46,7 @@ impl SimpleRandom {
 
     fn levels_slot1(&mut self, shelves: i32) -> i32 {
         let slot1 = self.generic_enchantibility(shelves) / 3;
-        if slot1 < 1 {
-            1
-        } else {
-            slot1
-        }
+        if slot1 < 1 { 1 } else { slot1 }
     }
 
     fn levels_slot2(&mut self, shelves: i32) -> i32 {
