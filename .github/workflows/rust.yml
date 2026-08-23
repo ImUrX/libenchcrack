@@ -1,0 +1,45 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Firefox
+      uses: browser-actions/setup-firefox@v1
+    - name: Setup Chrome
+      uses: browser-actions/setup-chrome@v2
+    - name: Setup wasm-pack
+      uses: baptiste0928/cargo-install@v3
+      with:
+        crate: wasm-pack
+    - name: Build
+      run: wasm-pack build -t web
+    - name: Run tests
+      run: wasm-pack test --firefox --chrome --headless
+
+  fmt:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Format
+      run: cargo fmt
+    - name: Analyze
+      run: cargo clippy
+
+      
+    
