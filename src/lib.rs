@@ -174,7 +174,6 @@ pub struct Manipulator {
 
 #[wasm_bindgen]
 impl Manipulator {
-    #[wasm_bindgen(constructor)]
     pub fn new(seed1: u32, seed2: u32) -> Option<Manipulator> {
         Self::calculate_seed(seed1, seed2).map(|player_seed| Self {
             player_seed,

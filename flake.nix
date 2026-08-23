@@ -30,6 +30,7 @@
 
           freetype
           expat
+          wasm-pack
         ];
         buildInputs = with pkgs; [
         ];
