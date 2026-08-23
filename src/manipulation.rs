@@ -1,7 +1,9 @@
 use enum_map::Enum;
-use std::cmp;
+use std::{cmp, collections::HashSet, sync::LazyLock};
 use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
+
+use crate::manipulation::Enchantment::{Breach, Density};
 
 #[wasm_bindgen]
 #[derive(Copy, Clone, PartialEq, PartialOrd)]
@@ -14,6 +16,9 @@ pub enum Version {
     V1_14,
     V1_14_3,
     V1_16,
+    V1_21,
+    V1_21_9,
+    V1_21_11,
 }
 
 impl Version {
@@ -26,7 +31,7 @@ impl Version {
     }
 
     pub fn latest() -> Self {
-        Version::V1_16
+        Version::V1_21_11
     }
 }
 
@@ -47,6 +52,7 @@ pub enum Material {
     Leather, //not for js
     Stone,
     Wooden,
+    Copper,
 }
 
 pub const SET_MATERIAL: usize = 9;
@@ -109,6 +115,7 @@ impl Introduced for Material {
         match self {
             Self::Netherite => Version::V1_16,
             Self::Turtle => Version::V1_13,
+            Self::Copper => Version::V1_21_9,
             _ => Version::V1_8,
         }
     }
@@ -191,6 +198,26 @@ pub enum Item {
     NetheriteAxe,
     NetheriteShovel,
     NetheriteHoe,
+    // 1.21
+    Mace,
+    // 1.21.9
+    CopperHelmet,
+    CopperChestplate,
+    CopperLeggings,
+    CopperBoots,
+    CopperSword,
+    CopperPickaxe,
+    CopperAxe,
+    CopperShovel,
+    CopperHoe,
+    // 1.21.11
+    NetheriteSpear,
+    DiamondSpear,
+    GoldenSpear,
+    IronSpear,
+    CopperSpear,
+    StoneSpear,
+    WoodenSpear,
 }
 
 impl Item {
@@ -222,6 +249,10 @@ impl Item {
         self.as_ref().ends_with("Axe")
     }
 
+    pub fn is_spear(&self) -> bool {
+        self.as_ref().ends_with("Spear")
+    }
+
     pub fn is_pickaxe(&self) -> bool {
         self.as_ref().ends_with("Pickaxe")
     }
@@ -241,6 +272,7 @@ impl Item {
     pub fn has_durability(&self) -> bool {
         self.is_armor()
             || self.is_sword()
+            || self.is_spear()
             || self.is_tool()
             || [
                 Item::Bow,
@@ -252,6 +284,7 @@ impl Item {
                 Item::Shield,
                 Item::Trident,
                 Item::Crossbow,
+                Item::Mace,
             ]
             .contains(self)
     }
@@ -267,9 +300,10 @@ impl Item {
                     Material::Diamond => 10,
                     Material::Turtle => 9,
                     Material::Netherite => 15,
+                    Material::Copper => 8,
                     _ => 0,
                 };
-            } else if self.is_sword() || self.is_tool() {
+            } else if self.is_sword() || self.is_spear() || self.is_tool() {
                 return match mat {
                     Material::Wooden => 15,
                     Material::Stone => 5,
@@ -277,12 +311,14 @@ impl Item {
                     Material::Golden => 22,
                     Material::Diamond => 10,
                     Material::Netherite => 15,
+                    Material::Copper => 13,
                     _ => 0,
                 };
             }
         };
         match self {
             Item::Bow | Item::FishingRod | Item::Trident | Item::Crossbow | Item::Book => 1,
+            Item::Mace => 15,
             _ => 0,
         }
     }
@@ -294,20 +330,26 @@ impl Item {
 
 impl Introduced for Item {
     fn get_introduced_version(&self) -> Version {
+        if self.is_spear() {
+            return Version::V1_21_11;
+        }
+
         if let Some(mat) = self.get_material() {
             return mat.get_introduced_version();
         }
+
         match self {
             Item::Elytra | Item::Shield => Version::V1_9,
             Item::Trident => Version::V1_13,
             Item::Crossbow => Version::V1_14,
+            Item::Mace => Version::V1_21,
             _ => Version::V1_8,
         }
     }
 }
 
 #[wasm_bindgen]
-#[derive(PartialEq, Copy, Clone, EnumIter)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, EnumIter)]
 pub enum Enchantment {
     Protection,
     FireProtection,
@@ -351,48 +393,59 @@ pub enum Enchantment {
     Multishot,
     QuickCharge,
     Piercing,
+    // 1.16
+    SoulSpeed,
+    // 1.21
+    Density,
+    Breach,
+    WindBurst,
+    // 1.21.11
+    Lunge,
 }
 
 type IncompatibilityFunc<'r> = &'r dyn Fn(Enchantment, Enchantment, Version) -> bool;
 
 const INCOMPATIBLES: &[IncompatibilityFunc] = &[
+    // every enchantment with itself
     &|a, b, _x| a == b,
+    // infinity with mending
     &|a, b, x| x.after(Version::V1_11) && a == Enchantment::Infinity && b == Enchantment::Mending,
-    &|a, b, _x| a == Enchantment::Sharpness && b == Enchantment::Smite,
-    &|a, b, _x| a == Enchantment::Sharpness && b == Enchantment::BaneOfArthropods,
-    &|a, b, _x| a == Enchantment::Smite && b == Enchantment::BaneOfArthropods,
+    // any damage enchantment
+    &|a, b, _x| a.is_damage_enchantment() && b.is_damage_enchantment(),
+    // depth strider with frost walker
     &|a, b, _x| a == Enchantment::FrostWalker && b == Enchantment::DepthStrider,
+    // silk touch with looting
     &|a, b, _x| a == Enchantment::SilkTouch && b == Enchantment::Looting,
+    // silk touch with fortune
     &|a, b, _x| a == Enchantment::SilkTouch && b == Enchantment::Fortune,
+    // silk touch with luck of the sea
     &|a, b, _x| a == Enchantment::SilkTouch && b == Enchantment::LuckOfTheSea,
+    // riptide with loyalty
     &|a, b, _x| a == Enchantment::Riptide && b == Enchantment::Loyalty,
+    // riptide with channeling
     &|a, b, _x| a == Enchantment::Riptide && b == Enchantment::Channeling,
+    // multishot with piercing
     &|a, b, _x| a == Enchantment::Multishot && b == Enchantment::Piercing,
+    // any protection enchantment
     &|a, b, x| {
-        x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::FireProtection
-    },
-    &|a, b, x| {
-        x != Version::V1_14 && a == Enchantment::Protection && b == Enchantment::BlastProtection
-    },
-    &|a, b, x| {
-        x != Version::V1_14
-            && a == Enchantment::Protection
-            && b == Enchantment::ProjectileProtection
-    },
-    &|a, b, x| {
-        x != Version::V1_14 && a == Enchantment::BlastProtection && b == Enchantment::FireProtection
-    },
-    &|a, b, x| {
-        x != Version::V1_14
-            && a == Enchantment::BlastProtection
-            && b == Enchantment::ProjectileProtection
-    },
-    &|a, b, x| {
-        x != Version::V1_14
-            && a == Enchantment::FireProtection
-            && b == Enchantment::ProjectileProtection
+        x != Version::V1_14 && a.is_protection_enchantment() && b.is_protection_enchantment()
     },
 ];
+
+static TREASURE_ENCHANTMENTS: LazyLock<HashSet<Enchantment>> = LazyLock::new(|| {
+    HashSet::from([
+        Enchantment::FrostWalker,
+        Enchantment::Mending,
+        Enchantment::BindingCurse,
+        Enchantment::VanishingCurse,
+        Enchantment::SoulSpeed,
+        Enchantment::WindBurst,
+    ])
+});
+
+static TABLE_ENCHANTMENTS: LazyLock<HashSet<Enchantment>> = LazyLock::new(|| {
+    HashSet::from_iter(Enchantment::iter()).difference(&TREASURE_ENCHANTMENTS).copied().collect()
+});
 
 impl Enchantment {
     pub fn levels_to_xp(start_level: i32, num_levels: i32) -> i32 {
@@ -426,20 +479,24 @@ impl Enchantment {
                     item.is_armor()
                 }
             }
-            Enchantment::FeatherFalling | Enchantment::DepthStrider | Enchantment::FrostWalker => {
-                item.is_boots()
-            }
+            Enchantment::FeatherFalling
+            | Enchantment::DepthStrider
+            | Enchantment::FrostWalker
+            | Enchantment::SoulSpeed => item.is_boots(),
             Enchantment::Respiration | Enchantment::AquaAffinity => item.is_helmet(),
             Enchantment::BindingCurse => {
                 item.is_armor() || [Item::Pumpkin, Item::Elytra, Item::Skull].contains(&item)
             }
             Enchantment::Sharpness | Enchantment::Smite | Enchantment::BaneOfArthropods => {
-                item.is_sword() || (!primary && item.is_axe())
+                item.is_sword()
+                    || item.is_spear()
+                    || (!primary && (item.is_axe() || item == Item::Mace))
             }
-            Enchantment::Knockback
-            | Enchantment::FireAspect
-            | Enchantment::Looting
-            | Enchantment::Sweeping => item.is_sword(),
+            Enchantment::FireAspect => {
+                item.is_sword() || item.is_spear() || (!primary && item == Item::Mace)
+            }
+            Enchantment::Knockback | Enchantment::Looting => item.is_sword() || item.is_spear(),
+            Enchantment::Sweeping => item.is_sword(),
             Enchantment::Efficiency => item.is_tool() || (!primary && item == Item::Shears),
             Enchantment::SilkTouch | Enchantment::Fortune => item.is_tool(),
             Enchantment::Power
@@ -458,18 +515,15 @@ impl Enchantment {
             Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => {
                 item == Item::Crossbow
             }
+            Enchantment::Density | Enchantment::Breach | Enchantment::WindBurst => {
+                item == Item::Mace
+            }
+            Enchantment::Lunge => item.is_spear(),
         }
     }
 
     pub fn is_treasure(&self) -> bool {
-        [
-            Enchantment::FrostWalker,
-            Enchantment::Mending,
-            Enchantment::BindingCurse,
-            Enchantment::VanishingCurse,
-        ]
-        .iter()
-        .any(|x| x == self)
+        TREASURE_ENCHANTMENTS.contains(self)
     }
 
     pub fn get_max_level(&self) -> i32 {
@@ -479,13 +533,15 @@ impl Enchantment {
             | Enchantment::BaneOfArthropods
             | Enchantment::Efficiency
             | Enchantment::Power
-            | Enchantment::Impaling => 5,
+            | Enchantment::Impaling
+            | Enchantment::Density => 5,
             Enchantment::Protection
             | Enchantment::FireProtection
             | Enchantment::BlastProtection
             | Enchantment::ProjectileProtection
             | Enchantment::FeatherFalling
-            | Enchantment::Piercing => 4,
+            | Enchantment::Piercing
+            | Enchantment::Breach => 4,
             Enchantment::Thorns
             | Enchantment::DepthStrider
             | Enchantment::Respiration
@@ -497,7 +553,10 @@ impl Enchantment {
             | Enchantment::Unbreaking
             | Enchantment::Loyalty
             | Enchantment::Riptide
-            | Enchantment::QuickCharge => 3,
+            | Enchantment::QuickCharge
+            | Enchantment::SoulSpeed
+            | Enchantment::WindBurst
+            | Enchantment::Lunge => 3,
             Enchantment::FrostWalker
             | Enchantment::Knockback
             | Enchantment::FireAspect
@@ -553,6 +612,11 @@ impl Enchantment {
             Enchantment::Multishot => 20,
             Enchantment::QuickCharge => 12 + (level - 1) * 20,
             Enchantment::Piercing => 1 + (level - 1) * 10,
+            Enchantment::SoulSpeed => level * 10,
+            Enchantment::Density => 5 + (level - 1) * 8,
+            Enchantment::Breach => 15 + (level - 1) * 9,
+            Enchantment::WindBurst => 15 + (level - 1) * 9,
+            Enchantment::Lunge => 5 + (level - 1) * 8,
         }
     }
 
@@ -595,6 +659,11 @@ impl Enchantment {
             Enchantment::Multishot => 50,
             Enchantment::QuickCharge => 50,
             Enchantment::Piercing => 50,
+            Enchantment::SoulSpeed => 15 + level * 10,
+            Enchantment::Density => 25 + (level - 1) * 8,
+            Enchantment::Breach => 65 + (level - 1) * 9,
+            Enchantment::WindBurst => 65 + (level - 1) * 9,
+            Enchantment::Lunge => 25 + (level - 1) * 8,
         }
     }
 
@@ -619,7 +688,9 @@ impl Enchantment {
             | Enchantment::Knockback
             | Enchantment::Unbreaking
             | Enchantment::Loyalty
-            | Enchantment::QuickCharge => {
+            | Enchantment::QuickCharge
+            | Enchantment::Density
+            | Enchantment::Lunge => {
                 if version == Version::V1_14 {
                     10
                 } else {
@@ -642,7 +713,9 @@ impl Enchantment {
             | Enchantment::Mending
             | Enchantment::Impaling
             | Enchantment::Riptide
-            | Enchantment::Multishot => {
+            | Enchantment::Multishot
+            | Enchantment::Breach
+            | Enchantment::WindBurst => {
                 if version == Version::V1_14 {
                     3
                 } else {
@@ -654,7 +727,8 @@ impl Enchantment {
             | Enchantment::SilkTouch
             | Enchantment::Infinity
             | Enchantment::VanishingCurse
-            | Enchantment::Channeling => 1,
+            | Enchantment::Channeling
+            | Enchantment::SoulSpeed => 1,
         }
     }
 
@@ -701,7 +775,6 @@ impl Enchantment {
     pub fn get_highest_allowed_enchantments(
         level: i32,
         item: Item,
-        treasure: bool,
         version: Version,
     ) -> Vec<EnchantmentInstance> {
         let mut allowed_enchs = Vec::new();
@@ -710,17 +783,17 @@ impl Enchantment {
             return allowed_enchs;
         }
 
-        for ench in Enchantment::iter() {
+        for ench in TABLE_ENCHANTMENTS.iter() {
             if version.before(ench.get_introduced_version()) {
                 continue;
             }
 
-            if (treasure || !ench.is_treasure()) && ench.can_apply(item, true) {
+            if ench.can_apply(item, true) {
                 for ench_lvl in (1..=ench.get_max_level()).rev() {
                     if level >= ench.get_min_enchantability(ench_lvl)
                         && level <= ench.get_max_enchantability(ench_lvl)
                     {
-                        allowed_enchs.push(EnchantmentInstance::new(ench, ench_lvl));
+                        allowed_enchs.push(EnchantmentInstance::new(*ench, ench_lvl));
                         break;
                     }
                 }
@@ -733,7 +806,6 @@ impl Enchantment {
         rand: &mut java_rand::Random,
         item: Item,
         level: i32,
-        treasure: bool,
         version: Version,
     ) -> Vec<EnchantmentInstance> {
         let enchantability = item.get_enchantability();
@@ -753,7 +825,7 @@ impl Enchantment {
         }
 
         let mut allowed_enchs =
-            Self::get_highest_allowed_enchantments(level, item, treasure, version);
+            Self::get_highest_allowed_enchantments(level, item, version);
         if allowed_enchs.is_empty() {
             return enchs;
         }
@@ -768,7 +840,7 @@ impl Enchantment {
             if version == Version::V1_14 {
                 level = level * 4 / 5 + 1;
                 allowed_enchs =
-                    Self::get_highest_allowed_enchantments(level, item, treasure, version);
+                    Self::get_highest_allowed_enchantments(level, item, version);
             }
 
             for ench in enchs.iter() {
@@ -800,7 +872,7 @@ impl Enchantment {
         version: Version,
     ) -> Vec<EnchantmentInstance> {
         rand.set_seed(xp_seed as u64 + slot as u64);
-        let mut v = Self::add_random_enchantments(rand, item, levels, false, version);
+        let mut v = Self::add_random_enchantments(rand, item, levels, version);
         if Item::Book == item && v.len() > 1 {
             v.remove(rand.next_i32_bound(v.len() as i32) as usize);
         }
@@ -825,6 +897,27 @@ impl Enchantment {
 
         Some(v.remove(index?))
     }
+
+    const fn is_damage_enchantment(&self) -> bool {
+        match *self {
+            Enchantment::Sharpness
+            | Enchantment::Smite
+            | Enchantment::BaneOfArthropods
+            | Enchantment::Density
+            | Enchantment::Breach => true,
+            _ => false,
+        }
+    }
+
+    const fn is_protection_enchantment(&self) -> bool {
+        match *self {
+            Enchantment::Protection
+            | Enchantment::BlastProtection
+            | Enchantment::FireProtection
+            | Enchantment::ProjectileProtection => true,
+            _ => false,
+        }
+    }
 }
 
 impl Introduced for Enchantment {
@@ -840,6 +933,9 @@ impl Introduced for Enchantment {
             Enchantment::Multishot | Enchantment::QuickCharge | Enchantment::Piercing => {
                 Version::V1_14
             }
+            Enchantment::SoulSpeed => Version::V1_16,
+            Enchantment::Density | Enchantment::Breach | Enchantment::WindBurst => Version::V1_21,
+            Enchantment::Lunge => Version::V1_21_11,
             _ => Version::V1_8,
         }
     }
