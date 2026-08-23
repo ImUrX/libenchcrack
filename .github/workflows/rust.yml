@@ -37,7 +37,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Format
-      run: cargo fmt
+      run: cargo fmt --check
     - name: Analyze
       run: cargo clippy
 
