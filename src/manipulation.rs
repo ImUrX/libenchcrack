@@ -1,9 +1,8 @@
 use enum_map::Enum;
-use std::{cmp, collections::HashSet, sync::LazyLock};
+use indexmap::IndexSet;
+use std::{cmp, sync::LazyLock};
 use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
-
-use crate::manipulation::Enchantment::{Breach, Density};
 
 #[wasm_bindgen]
 #[derive(Copy, Clone, PartialEq, PartialOrd)]
@@ -349,7 +348,7 @@ impl Introduced for Item {
 }
 
 #[wasm_bindgen]
-#[derive(PartialEq, Eq, Hash, Copy, Clone, EnumIter)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, EnumIter, Debug)]
 pub enum Enchantment {
     Protection,
     FireProtection,
@@ -432,8 +431,8 @@ const INCOMPATIBLES: &[IncompatibilityFunc] = &[
     },
 ];
 
-static TREASURE_ENCHANTMENTS: LazyLock<HashSet<Enchantment>> = LazyLock::new(|| {
-    HashSet::from([
+static TREASURE_ENCHANTMENTS: LazyLock<IndexSet<Enchantment>> = LazyLock::new(|| {
+    IndexSet::from([
         Enchantment::FrostWalker,
         Enchantment::Mending,
         Enchantment::BindingCurse,
@@ -443,8 +442,11 @@ static TREASURE_ENCHANTMENTS: LazyLock<HashSet<Enchantment>> = LazyLock::new(|| 
     ])
 });
 
-static TABLE_ENCHANTMENTS: LazyLock<HashSet<Enchantment>> = LazyLock::new(|| {
-    HashSet::from_iter(Enchantment::iter()).difference(&TREASURE_ENCHANTMENTS).copied().collect()
+static TABLE_ENCHANTMENTS: LazyLock<IndexSet<Enchantment>> = LazyLock::new(|| {
+    IndexSet::<Enchantment>::from_iter(Enchantment::iter())
+        .difference(&TREASURE_ENCHANTMENTS)
+        .copied()
+        .collect()
 });
 
 impl Enchantment {
@@ -824,8 +826,7 @@ impl Enchantment {
             level = 1;
         }
 
-        let mut allowed_enchs =
-            Self::get_highest_allowed_enchantments(level, item, version);
+        let mut allowed_enchs = Self::get_highest_allowed_enchantments(level, item, version);
         if allowed_enchs.is_empty() {
             return enchs;
         }
@@ -839,8 +840,7 @@ impl Enchantment {
         while rand.next_i32_bound(50) <= level {
             if version == Version::V1_14 {
                 level = level * 4 / 5 + 1;
-                allowed_enchs =
-                    Self::get_highest_allowed_enchantments(level, item, version);
+                allowed_enchs = Self::get_highest_allowed_enchantments(level, item, version);
             }
 
             for ench in enchs.iter() {
@@ -899,24 +899,24 @@ impl Enchantment {
     }
 
     const fn is_damage_enchantment(&self) -> bool {
-        match *self {
+        matches!(
+            *self,
             Enchantment::Sharpness
-            | Enchantment::Smite
-            | Enchantment::BaneOfArthropods
-            | Enchantment::Density
-            | Enchantment::Breach => true,
-            _ => false,
-        }
+                | Enchantment::Smite
+                | Enchantment::BaneOfArthropods
+                | Enchantment::Density
+                | Enchantment::Breach
+        )
     }
 
     const fn is_protection_enchantment(&self) -> bool {
-        match *self {
+        matches!(
+            *self,
             Enchantment::Protection
-            | Enchantment::BlastProtection
-            | Enchantment::FireProtection
-            | Enchantment::ProjectileProtection => true,
-            _ => false,
-        }
+                | Enchantment::BlastProtection
+                | Enchantment::FireProtection
+                | Enchantment::ProjectileProtection
+        )
     }
 }
 

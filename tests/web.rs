@@ -6,7 +6,6 @@ use libenchcrack::manipulation::*;
 use libenchcrack::utils::SimpleRandom;
 use libenchcrack::*;
 use std::num::Wrapping;
-use std::panic;
 use wasm_bindgen_test::*;
 use web_sys::console;
 
