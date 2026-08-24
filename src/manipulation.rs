@@ -107,7 +107,15 @@ impl Material {
                     || name.starts_with(self.as_ref())
             }
             Self::Leather => Self::Wooden.has_item(item, true) || name.starts_with(self.as_ref()),
-            Self::Book => [Item::Bow, Item::Book, Item::Crossbow, Item::Mace, Item::FishingRod, Item::Trident].contains(item),
+            Self::Book => [
+                Item::Bow,
+                Item::Book,
+                Item::Crossbow,
+                Item::Mace,
+                Item::FishingRod,
+                Item::Trident,
+            ]
+            .contains(item),
             _ => name.starts_with(self.as_ref()),
         }
     }
