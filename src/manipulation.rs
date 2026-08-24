@@ -54,7 +54,7 @@ pub enum Material {
     Copper,
 }
 
-pub const SET_MATERIAL: usize = 9;
+pub const SET_MATERIAL: usize = 10;
 
 type SortFn<'r> = &'r dyn Fn(Item) -> bool;
 const SORT: &[SortFn; SET_MATERIAL] = &[
@@ -63,6 +63,7 @@ const SORT: &[SortFn; SET_MATERIAL] = &[
     &|x| x.is_leggings(),
     &|x| x.is_boots(),
     &|x| x.is_sword(),
+    &|x| x.is_spear(),
     &|x| x.is_pickaxe(),
     &|x| x.is_axe(),
     &|x| x.is_shovel(),

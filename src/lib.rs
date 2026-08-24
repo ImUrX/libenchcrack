@@ -6,16 +6,20 @@ pub mod utils;
 
 use crate::manipulation::*;
 use crate::utils::SimpleRandom;
+use cfg_if::cfg_if;
 use enum_map::EnumMap;
 use std::num::Wrapping;
 use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
 
-#[cfg(not(feature = "threads"))]
+#[cfg(single)]
 use std::ops::Range;
 
 #[cfg(feature = "threads")]
 use rayon::prelude::*;
+
+#[cfg(feature = "compute")]
+use wgpu::{self, InstanceDescriptor};
 
 const PREALLOC_SIZE: usize = 80_000_000;
 
@@ -50,21 +54,56 @@ impl From<EnchantmentTableInfo> for (i32, i32, i32, i32) {
     }
 }
 
-#[wasm_bindgen]
-pub struct Cracker {
-    possible_seeds: Vec<i32>,
-    #[cfg(not(feature = "threads"))]
-    start_size: Range<i32>,
-    #[cfg(not(feature = "threads"))]
-    thread_id: usize,
-    #[cfg(not(feature = "threads"))]
-    threads: usize,
-    rng: SimpleRandom,
+cfg_if! {
+    if #[cfg(feature = "compute")] {
+        #[wasm_bindgen]
+        pub struct Cracker {
+            instance: wgpu::Instance,
+            adapter: wgpu::Adapter,
+            device: (wgpu::Device, wgpu::Queue),
+        }
+
+        pub enum WgpuInitError {
+
+        }
+    } else if #[cfg(feature = "threads")] {
+        #[wasm_bindgen]
+        pub struct Cracker {
+            possible_seeds: Vec<i32>,
+            rng: SimpleRandom,
+        }
+    } else {
+        #[wasm_bindgen]
+        pub struct Cracker {
+            possible_seeds: Vec<i32>,
+            start_size: Range<i32>,
+            thread_id: usize,
+            threads: usize,
+            rng: SimpleRandom,
+        }
+    }
 }
 
+#[cfg(feature = "compute")]
+impl Cracker {
+    pub async fn new() -> anyhow::Result<Self> {
+        let instance = wgpu::util::new_instance_with_webgpu_detection(
+            InstanceDescriptor::new_without_display_handle(),
+        )
+        .await;
+        let adapter = instance.request_adapter(&Default::default()).await?;
+        Ok(Cracker {
+            device: adapter.request_device(&Default::default()).await?,
+            instance,
+            adapter,
+        })
+    }
+}
+
+#[cfg(not(feature = "compute"))]
 #[wasm_bindgen]
 impl Cracker {
-    #[cfg(not(feature = "threads"))]
+    #[cfg(single)]
     #[wasm_bindgen(constructor)]
     pub fn new(thread_id: usize, threads: usize) -> Self {
         let size = u32::MAX / threads as u32;
@@ -118,7 +157,7 @@ impl Cracker {
             }))
     }
 
-    #[cfg(not(feature = "threads"))]
+    #[cfg(single)]
     #[wasm_bindgen(js_name = firstInput)]
     pub fn first_input(&mut self, info: EnchantmentTableInfo, info2: EnchantmentTableInfo) {
         for seed in self.start_size.clone() {

@@ -84,16 +84,33 @@ fn material() {
             Item::NetheriteLeggings,
             Item::NetheriteBoots,
             Item::NetheriteSword,
+            Item::NetheriteSpear,
             Item::NetheritePickaxe,
             Item::NetheriteAxe,
             Item::NetheriteShovel,
-            Item::NetheriteHoe
+            Item::NetheriteHoe,
         ]
     );
+
+    assert_eq!(
+        Material::Copper.get_items(),
+        [
+            Item::CopperHelmet,
+            Item::CopperChestplate,
+            Item::CopperLeggings,
+            Item::CopperBoots,
+            Item::CopperSword,
+            Item::CopperSpear,
+            Item::CopperPickaxe,
+            Item::CopperAxe,
+            Item::CopperShovel,
+            Item::CopperHoe,
+        ]
+    )
 }
 
 #[wasm_bindgen_test]
-fn manipulator() {
+fn manipulator_netherite_sword() {
     let item = Item::NetheriteSword;
     let mut man = Manipulator::new(2893231007, 2635886329).expect("Wrong seeds");
     let hex = vec![0x2e, 0x3d, 0xf9, 0x6e, 0x1c, 0x9d];
