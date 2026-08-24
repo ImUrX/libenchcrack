@@ -17,7 +17,7 @@ use std::ops::Range;
 #[cfg(feature = "threads")]
 use rayon::prelude::*;
 
-const PREALLOC_SIZE: usize = 80e6 as usize;
+const PREALLOC_SIZE: usize = 80_000_000;
 
 #[cfg(feature = "threads")]
 pub use wasm_bindgen_rayon::init_thread_pool;
