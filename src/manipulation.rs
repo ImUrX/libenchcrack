@@ -52,6 +52,7 @@ pub enum Material {
     Stone,
     Wooden,
     Copper,
+    Book,
 }
 
 pub const SET_MATERIAL: usize = 10;
@@ -62,8 +63,8 @@ const SORT: &[SortFn; SET_MATERIAL] = &[
     &|x| x.is_chestplate(),
     &|x| x.is_leggings(),
     &|x| x.is_boots(),
-    &|x| x.is_sword(),
     &|x| x.is_spear(),
+    &|x| x.is_sword(),
     &|x| x.is_pickaxe(),
     &|x| x.is_axe(),
     &|x| x.is_shovel(),
@@ -97,7 +98,8 @@ impl Material {
         match self {
             Self::Fire => {
                 Self::Chainmail.has_item(item, true)
-                    || (Self::Iron.has_item(item, true) && (item.is_tool() || item.is_sword()))
+                    || (Self::Iron.has_item(item, true)
+                        && (item.is_tool() || item.is_sword() || item.is_spear()))
             }
             Self::Stone => {
                 Self::Turtle.has_item(item, true)
@@ -105,6 +107,7 @@ impl Material {
                     || name.starts_with(self.as_ref())
             }
             Self::Leather => Self::Wooden.has_item(item, true) || name.starts_with(self.as_ref()),
+            Self::Book => [Item::Bow, Item::Book, Item::Crossbow, Item::Mace, Item::FishingRod, Item::Trident].contains(item),
             _ => name.starts_with(self.as_ref()),
         }
     }
