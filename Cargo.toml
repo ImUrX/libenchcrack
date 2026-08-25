@@ -1,7 +1,7 @@
 [package]
 name = "libenchcrack"
 description = "Code for cracking minecraft's XP seed"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["ImUrX <imurx@proton.me>"]
 repository = "https://github.com/ImUrX/libenchcrack"
 edition = "2024"
